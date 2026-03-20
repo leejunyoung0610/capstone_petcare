@@ -4,6 +4,7 @@ FastAPI AI 서버 - 반려동물 안구 질환 분석
 사용법:
     uvicorn api.main:app --reload --host 0.0.0.0 --port 8000
 """
+from __future__ import annotations
 
 from fastapi import FastAPI, File, UploadFile, HTTPException, Form, Body
 from fastapi.middleware.cors import CORSMiddleware
