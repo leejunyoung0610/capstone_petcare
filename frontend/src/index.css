@@ -1,0 +1,7 @@
+@import './styles/index.css';
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}

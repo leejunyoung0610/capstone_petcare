@@ -9,6 +9,8 @@
 반려동물(강아지/고양이) 눈 사진을 입력받아 안구 질환을 AI로 스크리닝하는 모델.  
 보호자가 스마트폰으로 찍은 사진 → 자동 눈 감지 → 질환별 확률 출력.
 
+웹은 `frontend/`, 앱·DB 연동 API는 `backend/`, 눈 이미지 추론은 `api/`에서 각각 띄워서 맞춥니다.
+
 ---
 
 ## 환경 설정
@@ -58,9 +60,11 @@ capstone_petcare/
 │       ├── model.py
 │       ├── train.py
 │       └── predict.py
-├── api/                   # FastAPI 서버
+├── api/                   # AI 추론 FastAPI (예: 포트 8000)
 │   └── main.py
-├── requirements.txt       # 패키지 의존성
+├── backend/               # 앱 백엔드 API (DB·인증·진단 연계)
+├── frontend/            # 웹 UI (Vite + React)
+├── requirements.txt       # 루트(AI) 패키지 의존성
 ├── .gitignore
 └── README.md
 ```
@@ -189,7 +193,6 @@ TL JSON의 label_bbox를 TS 원본 이미지에 적용하여 YOLO 라벨 생성
 ## 개발 단계
 
 1. ✅ 환경 설정 및 프로젝트 구조 생성
-2. ⬜ YOLOv8 학습 데이터 구성
 3. ⬜ YOLOv8 눈 감지 모델 학습
 4. ⬜ EfficientNet-B3 질환 분류 모델 학습
 5. ⬜ FastAPI 서버 구축
