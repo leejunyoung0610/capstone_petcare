@@ -22,6 +22,12 @@ export default function Dashboard() {
           반려동물 프로필을 등록한 뒤 안구 사진을 업로드하면 AI 스크리닝 결과와 PDF 보고서를 받을 수
           있습니다.
         </p>
+        <p className="mt-2 text-sm text-slate-500">
+          <Link to="/" className="font-medium text-brand-link hover:underline">
+            서비스 소개·메인 페이지
+          </Link>
+          로 이동할 수 있어요.
+        </p>
         <div className="mt-6 flex flex-wrap gap-3">
           <WireframeButton variant="primary" asChild>
             <Link to="/pets">내 반려동물</Link>

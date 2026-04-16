@@ -9,7 +9,7 @@ import { cn } from '../../lib/utils';
 
 export default function Login() {
   const navigate = useNavigate();
-  const { login, isLoading, error, clearError } = useAuthStore();
+  const { login, vetLogin, isLoading, error, clearError, logout } = useAuthStore();
   const [userType, setUserType] = useState('user');
   const [formData, setFormData] = useState({ email: '', password: '' });
 
@@ -22,15 +22,29 @@ export default function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (userType === 'vet') {
-      window.alert('수의사 로그인은 준비 중입니다.');
+     const ok = await vetLogin(formData.email, formData.password);
+     if (ok) navigate('/vet/dashboard');
       return;
     }
     if (userType === 'admin') {
-      window.alert('관리자 로그인은 준비 중입니다.');
+      const ok = await login(formData.email, formData.password);
+      if (ok) {
+        const role = useAuthStore.getState().user?.role;
+        if (role !== 'admin') {
+          logout();
+          window.alert(
+            '관리자 권한이 없는 계정입니다. backend/scripts/create_admin_user.py 로 관리자를 만든 뒤 로그인하세요.'
+          );
+        } else navigate('/admin/dashboard');
+      }
       return;
     }
     const ok = await login(formData.email, formData.password);
-    if (ok) navigate('/dashboard');
+    if (ok) {
+      const role = useAuthStore.getState().user?.role;
+      if (role === 'admin') navigate('/admin/dashboard');
+      else navigate('/dashboard');
+    }
   };
 
   const tab = (id, label) => (

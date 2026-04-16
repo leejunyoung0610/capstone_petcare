@@ -1,346 +1,591 @@
-import { useState } from "react";
-import { Header } from "../components/Header";
-import { WireframeBox } from "../components/WireframeBox";
-import { WireframeButton } from "../components/WireframeButton";
-import { MessageCircle, Clock, CheckCircle, XCircle, FileText, Star, TrendingUp, Calendar } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link, useNavigate } from "react-router";
+import {
+  Clock,
+  CheckCircle,
+  FileText,
+  Star,
+  TrendingUp,
+  Calendar,
+  Eye,
+  Settings,
+  LogOut,
+  Bell,
+  ChevronRight,
+  BadgeCheck,
+  Loader2,
+} from "lucide-react";
+import {
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
+import useAuthStore from "../../stores/authStore";
+import { getVetMe, getVetDashboardSummary } from "../../api/vets";
+import { getVetOpinionRequests } from "../../api/opinions";
+
+type Tab = "pending" | "completed" | "stats";
+
+interface OpinionRow {
+  id: number;
+  diagnosis_id: number;
+  pet_name?: string | null;
+  owner_name?: string | null;
+  symptom_memo?: string | null;
+  created_at: string;
+  answered_at?: string | null;
+  content?: string | null;
+  recommendation?: string | null;
+  visit_required?: boolean;
+  service_fee?: number | null;
+  owner_rating?: number | null;
+  owner_review?: string | null;
+  diagnosis?: {
+    animal_type?: string;
+    main_disease?: string | null;
+    main_confidence?: number | null;
+    image_url?: string;
+  } | null;
+}
+
+interface VetProfile {
+  name: string;
+  hospital_name?: string | null;
+  approval_status?: string;
+}
+
+interface DashSummary {
+  pending_count: number;
+  completed_total: number;
+  completed_last_7_days: number;
+  avg_rating?: number | null;
+  review_count: number;
+  revenue_this_month: number;
+  monthly_requests: { month: string; count: number }[];
+  disease_breakdown: { disease: string; count: number }[];
+}
+
+const PIE_COLORS = ["#3b82f6", "#0ea5e9", "#6366f1", "#94a3b8", "#22c55e", "#eab308", "#a855f7", "#64748b"];
+
+function speciesKo(animal?: string | null) {
+  const t = animal?.toLowerCase();
+  if (t === "dog") return "강아지";
+  if (t === "cat") return "고양이";
+  return "반려동물";
+}
+
+function monthLabel(ym: string) {
+  const [y, m] = ym.split("-").map(Number);
+  if (!y || !m) return ym;
+  return `${m}월`;
+}
 
 export function VetDashboard() {
-  const [activeTab, setActiveTab] = useState<"pending" | "completed" | "stats">("pending");
+  const navigate = useNavigate();
+  const logout = useAuthStore((s) => s.logout);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [activeTab, setActiveTab] = useState<Tab>("pending");
+  const [profile, setProfile] = useState<VetProfile | null>(null);
+  const [summary, setSummary] = useState<DashSummary | null>(null);
+  const [pending, setPending] = useState<OpinionRow[]>([]);
+  const [completed, setCompleted] = useState<OpinionRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadAll = useCallback(async () => {
+    setError(null);
+    try {
+      const [me, sum, pend, done] = await Promise.all([
+        getVetMe(),
+        getVetDashboardSummary(),
+        getVetOpinionRequests("pending"),
+        getVetOpinionRequests("answered"),
+      ]);
+      setProfile(me);
+      setSummary(sum);
+      setPending(pend);
+      setCompleted(done);
+    } catch (e: unknown) {
+      const msg =
+        typeof e === "object" && e !== null && "response" in e
+          ? (e as { response?: { data?: { detail?: string } } }).response?.data?.detail
+          : "데이터를 불러오지 못했습니다.";
+      setError(typeof msg === "string" ? msg : "데이터를 불러오지 못했습니다.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadAll();
+  }, [loadAll]);
+
+  const ratingBars = useMemo(() => {
+    const buckets = [0, 0, 0, 0, 0];
+    completed.forEach((c) => {
+      const r = c.owner_rating;
+      if (r && r >= 1 && r <= 5) buckets[r - 1] += 1;
+    });
+    return [5, 4, 3, 2, 1].map((rating) => ({
+      rating: `${rating}점`,
+      count: buckets[rating - 1],
+    }));
+  }, [completed]);
+
+  const handleLogout = () => {
+    logout();
+    navigate("/login", { replace: true });
+  };
+
+  const navItems = [
+    { key: "pending" as const, label: "대기 중 소견", icon: Clock, badge: summary?.pending_count },
+    { key: "completed" as const, label: "완료된 소견", icon: CheckCircle, badge: null },
+    { key: "stats" as const, label: "통계", icon: TrendingUp, badge: null },
+  ];
+
+  const approved =
+    (profile?.approval_status ?? "approved").toLowerCase() === "approved";
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Header />
-      
-      <div className="max-w-7xl mx-auto px-4 py-12">
-        {/* Vet Profile Header */}
-        <WireframeBox label="VET PROFILE" className="bg-gradient-to-r from-green-50 to-emerald-50 mb-8">
-          <div className="flex items-center gap-6">
-            <div className="w-24 h-24 bg-gray-300 rounded-full flex items-center justify-center text-gray-500 text-xs font-mono">
-              [프로필]
+    <div className="flex min-h-screen bg-slate-100">
+      <aside
+        className={`${
+          sidebarCollapsed ? "w-16" : "w-60"
+        } sticky top-0 flex h-screen shrink-0 flex-col border-r border-slate-200 bg-white transition-all duration-200`}
+      >
+        <div className="flex h-14 items-center gap-2 border-b border-slate-200 px-3">
+          <button
+            type="button"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-600"
+            onClick={() => setSidebarCollapsed((c) => !c)}
+            aria-label="사이드바 접기"
+          >
+            <Eye className="h-4 w-4 text-white" />
+          </button>
+          {!sidebarCollapsed && (
+            <div>
+              <span className="text-sm font-bold text-slate-900">PetEye AI</span>
+              <p className="text-xs text-slate-400">수의사 포털</p>
             </div>
-            <div className="flex-1">
-              <div className="flex items-center gap-3 mb-2">
-                <h1 className="text-2xl font-bold">김동물 수의사</h1>
-                <span className="px-3 py-1 bg-green-600 text-white text-sm font-bold rounded">
-                  승인됨
-                </span>
-              </div>
-              <p className="text-gray-600 mb-2">행복동물병원 · 안과 전문 · 경력 15년</p>
-              <div className="flex gap-6 text-sm">
-                <span className="flex items-center gap-1">
-                  <Star className="w-4 h-4 text-yellow-500 fill-current" />
-                  <strong>4.8</strong> (리뷰 127개)
-                </span>
-                <span className="flex items-center gap-1">
-                  <MessageCircle className="w-4 h-4" />
-                  대기 중 소견: <strong>3건</strong>
-                </span>
-                <span className="flex items-center gap-1">
-                  <CheckCircle className="w-4 h-4" />
-                  완료된 소견: <strong>89건</strong>
-                </span>
-              </div>
-            </div>
-            <WireframeButton variant="outline">프로필 수정</WireframeButton>
-          </div>
-        </WireframeBox>
-
-        {/* Quick Stats */}
-        <div className="grid md:grid-cols-4 gap-6 mb-8">
-          <WireframeBox label="STAT 1" className="bg-blue-50">
-            <div className="text-center">
-              <Clock className="w-8 h-8 text-blue-600 mx-auto mb-2" />
-              <div className="text-3xl font-bold text-blue-600 mb-1">3</div>
-              <div className="text-sm text-gray-600 font-mono">대기 중</div>
-            </div>
-          </WireframeBox>
-          
-          <WireframeBox label="STAT 2" className="bg-green-50">
-            <div className="text-center">
-              <CheckCircle className="w-8 h-8 text-green-600 mx-auto mb-2" />
-              <div className="text-3xl font-bold text-green-600 mb-1">12</div>
-              <div className="text-sm text-gray-600 font-mono">이번 주 완료</div>
-            </div>
-          </WireframeBox>
-          
-          <WireframeBox label="STAT 3" className="bg-yellow-50">
-            <div className="text-center">
-              <Star className="w-8 h-8 text-yellow-600 mx-auto mb-2" />
-              <div className="text-3xl font-bold text-yellow-600 mb-1">4.8</div>
-              <div className="text-sm text-gray-600 font-mono">평균 평점</div>
-            </div>
-          </WireframeBox>
-          
-          <WireframeBox label="STAT 4" className="bg-purple-50">
-            <div className="text-center">
-              <TrendingUp className="w-8 h-8 text-purple-600 mx-auto mb-2" />
-              <div className="text-3xl font-bold text-purple-600 mb-1">267K</div>
-              <div className="text-sm text-gray-600 font-mono">이번 달 수익</div>
-            </div>
-          </WireframeBox>
+          )}
         </div>
 
-        {/* Tabs */}
-        <div className="border-b-2 border-gray-300 mb-8">
-          <div className="flex gap-2">
-            {[
-              { key: "pending", label: "대기 중 소견", icon: Clock },
-              { key: "completed", label: "완료된 소견", icon: CheckCircle },
-              { key: "stats", label: "통계", icon: TrendingUp },
-            ].map((tab) => (
-              <button
-                key={tab.key}
-                onClick={() => setActiveTab(tab.key as any)}
-                className={`px-6 py-3 border-2 border-b-0 font-mono text-sm flex items-center gap-2 ${
-                  activeTab === tab.key
-                    ? "bg-white border-gray-300 border-b-white -mb-0.5 relative z-10"
-                    : "bg-gray-100 border-transparent text-gray-600"
-                }`}
-              >
-                <tab.icon className="w-4 h-4" />
-                {tab.label}
-              </button>
-            ))}
+        {!sidebarCollapsed && profile && (
+          <div className="border-b border-slate-100 px-4 py-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-slate-100">
+                <StethoscopeMini />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold text-slate-900">{profile.name} 수의사</p>
+                <div className="flex items-center gap-1">
+                  <BadgeCheck className={`h-3 w-3 ${approved ? "text-green-500" : "text-amber-500"}`} />
+                  <span className={`text-xs ${approved ? "text-green-600" : "text-amber-600"}`}>
+                    {approved ? "승인됨" : "승인 대기"}
+                  </span>
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
+        )}
 
-        {/* Pending Opinions */}
-        {activeTab === "pending" && (
-          <div className="space-y-6">
-            {[
-              {
-                id: 1,
-                date: "2026-03-13 10:30",
-                pet: "뽀삐 (강아지, 3세)",
-                owner: "홍길동",
-                symptom: "눈이 충혈되고 눈곱이 많이 끼어요. 3일 전부터 증상이 시작되었습니다.",
-                hasAI: true,
-                aiDisease: "결막염",
-                aiConfidence: 87.3,
-                imageCount: 3,
-                status: "PENDING"
-              },
-              {
-                id: 2,
-                date: "2026-03-13 14:15",
-                pet: "나비 (고양이, 2세)",
-                owner: "김영희",
-                symptom: "각막에 흰색 반점이 보이고 눈물을 많이 흘립니다.",
-                hasAI: false,
-                aiDisease: null,
-                aiConfidence: null,
-                imageCount: 2,
-                status: "PENDING"
-              },
-            ].map((request) => (
-              <WireframeBox key={request.id} label={`REQUEST ${request.id}`} className="bg-white">
-                <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <div className="flex items-center gap-2 mb-2">
-                      <h3 className="text-xl font-bold">{request.pet}</h3>
-                      <span className="px-2 py-1 bg-orange-100 text-orange-700 text-xs font-bold rounded">
-                        {request.status === "PENDING" ? "대기 중" : "진행 중"}
-                      </span>
+        <nav className="flex-1 space-y-1 p-2">
+          {navItems.map((item) => (
+            <button
+              key={item.key}
+              type="button"
+              onClick={() => setActiveTab(item.key)}
+              className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors ${
+                activeTab === item.key
+                  ? "bg-blue-50 font-medium text-blue-700"
+                  : "text-slate-600 hover:bg-slate-100 hover:text-slate-800"
+              }`}
+            >
+              <item.icon className="h-4 w-4 shrink-0" />
+              {!sidebarCollapsed && (
+                <>
+                  <span className="flex-1 text-left">{item.label}</span>
+                  {item.badge != null && item.badge > 0 ? (
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white">
+                      {item.badge > 99 ? "99+" : item.badge}
+                    </span>
+                  ) : null}
+                </>
+              )}
+            </button>
+          ))}
+        </nav>
+
+        <div className="space-y-1 border-t border-slate-100 p-2">
+          <Link
+            to="/vet/profile"
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-slate-600 hover:bg-slate-100"
+          >
+            <Settings className="h-4 w-4 shrink-0" />
+            {!sidebarCollapsed && <span>병원 프로필</span>}
+          </Link>
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-red-500 hover:bg-red-50"
+          >
+            <LogOut className="h-4 w-4 shrink-0" />
+            {!sidebarCollapsed && <span>로그아웃</span>}
+          </button>
+        </div>
+      </aside>
+
+      <main className="min-w-0 flex-1">
+        {!approved && (
+          <div className="border-b border-amber-200 bg-amber-50 px-6 py-3 text-sm text-amber-900">
+            <strong>승인 대기 중입니다.</strong> 관리자가 수의사 신청을 승인하면 모든 기능을 이용할 수 있습니다. 승인 전에도
+            로그인·프로필 수정은 가능합니다.
+          </div>
+        )}
+        <header className="flex h-14 items-center justify-between border-b border-slate-200 bg-white px-6">
+          <h1 className="text-base font-bold text-slate-900">
+            {activeTab === "pending"
+              ? "대기 중 소견 요청"
+              : activeTab === "completed"
+                ? "완료된 소견"
+                : "활동 통계"}
+          </h1>
+          <button
+            type="button"
+            className="relative rounded-lg p-2 text-slate-500 hover:bg-slate-100"
+            aria-label="알림"
+            onClick={() => window.alert("알림 목록은 /api/notifications 연동 시 표시할 수 있습니다.")}
+          >
+            <Bell className="h-4 w-4" />
+            {(summary?.pending_count ?? 0) > 0 && (
+              <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-red-500" />
+            )}
+          </button>
+        </header>
+
+        <div className="space-y-5 p-6">
+          {error && (
+            <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">{error}</div>
+          )}
+
+          {loading && (
+            <div className="flex items-center gap-2 py-12 text-slate-600">
+              <Loader2 className="h-6 w-6 animate-spin" />
+              불러오는 중…
+            </div>
+          )}
+
+          {!loading && summary && (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              {[
+                {
+                  label: "대기 중",
+                  value: String(summary.pending_count),
+                  sub: "소견 요청",
+                  icon: Clock,
+                  color: "blue" as const,
+                },
+                {
+                  label: "최근 7일 완료",
+                  value: String(summary.completed_last_7_days),
+                  sub: `전체 완료 ${summary.completed_total}건`,
+                  icon: CheckCircle,
+                  color: "green" as const,
+                },
+                {
+                  label: "평균 평점",
+                  value: summary.avg_rating != null ? String(summary.avg_rating) : "—",
+                  sub: `리뷰 ${summary.review_count}개`,
+                  icon: Star,
+                  color: "amber" as const,
+                },
+                {
+                  label: "이번 달 수익",
+                  value: `${(summary.revenue_this_month / 1000).toFixed(0)}K`,
+                  sub: `${summary.revenue_this_month.toLocaleString()}원`,
+                  icon: TrendingUp,
+                  color: "purple" as const,
+                },
+              ].map((stat) => (
+                <div key={stat.label} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                  <div className="mb-3 flex items-center justify-between">
+                    <span className="text-xs text-slate-500">{stat.label}</span>
+                    <div
+                      className={`flex h-8 w-8 items-center justify-center rounded-lg ${
+                        stat.color === "blue"
+                          ? "bg-blue-50"
+                          : stat.color === "green"
+                            ? "bg-green-50"
+                            : stat.color === "amber"
+                              ? "bg-amber-50"
+                              : "bg-purple-50"
+                      }`}
+                    >
+                      <stat.icon
+                        className={`h-4 w-4 ${
+                          stat.color === "blue"
+                            ? "text-blue-600"
+                            : stat.color === "green"
+                              ? "text-green-600"
+                              : stat.color === "amber"
+                                ? "text-amber-500"
+                                : "text-purple-600"
+                        }`}
+                      />
                     </div>
-                    <p className="text-sm text-gray-600">보호자: {request.owner}</p>
-                    <p className="text-sm text-gray-600 flex items-center gap-1">
-                      <Calendar className="w-4 h-4" />
-                      요청일시: {request.date}
-                    </p>
                   </div>
-                  <div className="text-sm text-gray-500 font-mono">
-                    #{request.id.toString().padStart(5, '0')}
+                  <p className="text-2xl font-bold text-slate-900">{stat.value}</p>
+                  <p className="mt-0.5 text-xs text-slate-400">{stat.sub}</p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {!loading && activeTab === "pending" && (
+            <div className="space-y-4">
+              {pending.map((req) => {
+                const d = req.diagnosis;
+                const hasAi = !!(d?.main_disease && d.main_confidence != null);
+                return (
+                  <div key={req.id} className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                    <div className="mb-4 flex items-start justify-between">
+                      <div>
+                        <div className="mb-1 flex flex-wrap items-center gap-2">
+                          <span className="text-base font-bold text-slate-900">
+                            {req.pet_name ?? "반려동물"} ({speciesKo(d?.animal_type)})
+                          </span>
+                          <span className="inline-flex items-center gap-1 rounded-full bg-orange-100 px-2 py-0.5 text-xs font-semibold text-orange-700">
+                            <Clock className="h-3 w-3" /> 대기 중
+                          </span>
+                        </div>
+                        <p className="text-sm text-slate-500">보호자: {req.owner_name ?? "—"}</p>
+                        <p className="mt-0.5 flex items-center gap-1 text-xs text-slate-400">
+                          <Calendar className="h-3 w-3" />
+                          {formatDateTime(req.created_at)}
+                        </p>
+                      </div>
+                      <span className="text-xs text-slate-400">#{String(req.id).padStart(5, "0")}</span>
+                    </div>
+
+                    {hasAi && (
+                      <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-3">
+                        <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+                          <div>
+                            <p className="mb-1 flex items-center gap-1.5 text-xs font-semibold text-blue-800">
+                              <FileText className="h-3.5 w-3.5" /> AI 분석 결과 첨부됨
+                            </p>
+                            <p className="text-xs text-slate-600">
+                              대표 질환: <strong className="text-blue-700">{d?.main_disease}</strong>
+                              <span className="ml-2 text-slate-500">신뢰도 {d?.main_confidence}%</span>
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            className="rounded-lg border border-blue-300 bg-white px-3 py-1.5 text-xs font-medium text-blue-600 hover:bg-blue-50"
+                            onClick={() =>
+                              window.alert(
+                                "AI 진단 상세는 보호자용 /result 화면과 동일 데이터입니다. 수의사 토큰으로는 추후 GET /diagnosis 전용 경로를 두면 바로 열 수 있습니다."
+                              )
+                            }
+                          >
+                            AI 결과 보기
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="mb-4">
+                      <p className="mb-1.5 text-xs font-semibold text-slate-700">증상 설명</p>
+                      <p className="rounded-lg bg-slate-50 p-3 text-sm leading-relaxed text-slate-600">
+                        {req.symptom_memo || "—"}
+                      </p>
+                    </div>
+
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                      <Link
+                        to={`/vet/opinions/${req.id}/write`}
+                        className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-blue-600 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+                      >
+                        소견 작성하기
+                        <ChevronRight className="h-4 w-4" />
+                      </Link>
+                    </div>
+                  </div>
+                );
+              })}
+              {pending.length === 0 && (
+                <p className="py-12 text-center text-slate-500">대기 중인 소견 요청이 없습니다.</p>
+              )}
+            </div>
+          )}
+
+          {!loading && activeTab === "completed" && (
+            <div className="space-y-4">
+              {completed.map((c) => (
+                <div key={c.id} className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                  <div className="mb-4 flex items-start justify-between">
+                    <div>
+                      <div className="mb-1 flex flex-wrap items-center gap-2">
+                        <span className="text-base font-bold text-slate-900">
+                          {c.pet_name ?? "반려동물"} ({speciesKo(c.diagnosis?.animal_type)})
+                        </span>
+                        <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-700">
+                          <CheckCircle className="h-3 w-3" /> 완료
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-500">보호자: {c.owner_name ?? "—"}</p>
+                      <p className="mt-0.5 text-xs text-slate-400">완료: {formatDateTime(c.answered_at)}</p>
+                    </div>
+                    <div className="text-right">
+                      <div className="flex justify-end gap-0.5">
+                        {c.owner_rating
+                          ? Array.from({ length: c.owner_rating }).map((_, i) => (
+                              <Star key={i} className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+                            ))
+                          : null}
+                      </div>
+                      <p className="mt-1 text-sm font-bold text-slate-800">
+                        {c.service_fee != null ? `${c.service_fee.toLocaleString()}원` : "—"}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="rounded-lg border border-green-200 bg-green-50 p-3">
+                    <p className="mb-1.5 text-xs font-semibold text-green-800">작성한 소견</p>
+                    <p className="text-sm leading-relaxed text-slate-700">{c.content}</p>
+                    <span
+                      className={`mt-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${
+                        c.visit_required ? "bg-red-100 text-red-700" : "bg-blue-100 text-blue-700"
+                      }`}
+                    >
+                      {c.visit_required ? "병원 방문 필요" : "경과 관찰"}
+                    </span>
+                  </div>
+                  {c.owner_review && (
+                    <div className="mt-3 rounded-lg border border-yellow-200 bg-yellow-50 p-3">
+                      <p className="mb-1 text-xs font-semibold text-yellow-900">보호자 리뷰</p>
+                      <p className="text-sm text-slate-700">{c.owner_review}</p>
+                    </div>
+                  )}
+                </div>
+              ))}
+              {completed.length === 0 && (
+                <p className="py-12 text-center text-slate-500">완료된 소견이 없습니다.</p>
+              )}
+            </div>
+          )}
+
+          {!loading && activeTab === "stats" && summary && (
+            <div className="space-y-5">
+              <div className="grid gap-5 md:grid-cols-2">
+                <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                  <h3 className="mb-4 text-sm font-semibold text-slate-900">월별 소견 요청 추이</h3>
+                  <div className="h-[200px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart
+                        data={summary.monthly_requests.map((x) => ({
+                          month: monthLabel(x.month),
+                          count: x.count,
+                        }))}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                        <XAxis dataKey="month" tick={{ fontSize: 11 }} />
+                        <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
+                        <Tooltip />
+                        <Line
+                          type="monotone"
+                          dataKey="count"
+                          stroke="#3b82f6"
+                          strokeWidth={2}
+                          dot={{ fill: "#3b82f6", r: 4 }}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
                   </div>
                 </div>
-
-                {request.hasAI && (
-                  <div className="bg-blue-50 border-2 border-blue-200 p-3 rounded mb-4">
-                    <p className="font-bold text-blue-900 mb-2 flex items-center gap-2">
-                      <FileText className="w-4 h-4" />
-                      AI 분석 결과 첨부됨
-                    </p>
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <p className="text-sm">대표 질환: <strong className="text-blue-700">{request.aiDisease}</strong></p>
-                        <p className="text-sm">신뢰도: <strong>{request.aiConfidence}%</strong></p>
-                      </div>
-                      <WireframeButton variant="outline" className="text-xs py-1">
-                        AI 결과 보기
-                      </WireframeButton>
-                    </div>
+                <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                  <h3 className="mb-4 text-sm font-semibold text-slate-900">평점 분포 (보호자 리뷰)</h3>
+                  <div className="h-[200px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={ratingBars}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                        <XAxis dataKey="rating" tick={{ fontSize: 11 }} />
+                        <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
+                        <Tooltip />
+                        <Bar dataKey="count" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
                   </div>
-                )}
+                </div>
+              </div>
 
-                <div className="mb-4">
-                  <p className="font-bold text-sm mb-2">증상 설명</p>
-                  <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded leading-relaxed">
-                    {request.symptom}
+              <div className="grid gap-5 md:grid-cols-2">
+                <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                  <h3 className="mb-4 text-sm font-semibold text-slate-900">수익</h3>
+                  <p className="text-sm text-slate-600">
+                    이번 달 누적 <strong className="text-slate-900">{summary.revenue_this_month.toLocaleString()}원</strong>{" "}
+                    (소견 작성 시 입력한 service_fee 합계)
                   </p>
                 </div>
-
-                <div className="mb-4">
-                  <p className="font-bold text-sm mb-2">첨부 이미지 ({request.imageCount}장)</p>
-                  <div className="grid grid-cols-4 gap-3">
-                    {Array.from({ length: request.imageCount }).map((_, i) => (
-                      <div
-                        key={i}
-                        className="w-full h-24 bg-gray-200 flex items-center justify-center text-gray-500 text-xs font-mono cursor-pointer hover:bg-gray-300"
-                      >
-                        [이미지 {i + 1}]
-                      </div>
-                    ))}
+                <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                  <h3 className="mb-4 text-sm font-semibold text-slate-900">질환별 소견 분포</h3>
+                  <div className="h-[180px] w-full">
+                    {summary.disease_breakdown.length > 0 ? (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={summary.disease_breakdown.map((d) => ({ name: d.disease, value: d.count }))}
+                            cx="50%"
+                            cy="50%"
+                            outerRadius={70}
+                            dataKey="value"
+                            label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                            labelLine={false}
+                          >
+                            {summary.disease_breakdown.map((_, i) => (
+                              <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                            ))}
+                          </Pie>
+                          <Tooltip />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <p className="flex h-full items-center justify-center text-sm text-slate-400">데이터 없음</p>
+                    )}
                   </div>
                 </div>
-
-                <div className="flex gap-3">
-                  <WireframeButton variant="primary" className="flex-1">
-                    소견 작성하기
-                  </WireframeButton>
-                  <WireframeButton variant="outline">
-                    상세 보기
-                  </WireframeButton>
-                </div>
-              </WireframeBox>
-            ))}
-          </div>
-        )}
-
-        {/* Completed Opinions */}
-        {activeTab === "completed" && (
-          <div className="space-y-6">
-            {[
-              {
-                id: 3,
-                date: "2026-03-12 15:20",
-                completedDate: "2026-03-12 18:30",
-                pet: "초코 (강아지, 5세)",
-                owner: "이철수",
-                disease: "각막궤양",
-                opinion: "각막궤양 초기 소견이 보입니다. 항생제 안약 처방이 필요하며...",
-                visitRequired: true,
-                rating: 5,
-                review: "정말 자세하게 설명해주셔서 감사합니다!",
-                fee: 30000
-              },
-              {
-                id: 4,
-                date: "2026-03-11 10:15",
-                completedDate: "2026-03-11 14:45",
-                pet: "뭉치 (고양이, 4세)",
-                owner: "박민수",
-                disease: "결막염",
-                opinion: "결막염 증상으로 보입니다. 눈 주변을 깨끗이 관리하시고...",
-                visitRequired: false,
-                rating: 4,
-                review: "친절한 답변 감사합니다.",
-                fee: 30000
-              },
-            ].map((completed) => (
-              <WireframeBox key={completed.id} label={`COMPLETED ${completed.id}`} className="bg-white">
-                <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <div className="flex items-center gap-2 mb-2">
-                      <h3 className="text-xl font-bold">{completed.pet}</h3>
-                      <span className="px-2 py-1 bg-green-100 text-green-700 text-xs font-bold rounded flex items-center gap-1">
-                        <CheckCircle className="w-3 h-3" />
-                        완료
-                      </span>
-                    </div>
-                    <p className="text-sm text-gray-600">보호자: {completed.owner}</p>
-                    <p className="text-sm text-gray-600">요청: {completed.date}</p>
-                    <p className="text-sm text-gray-600">완료: {completed.completedDate}</p>
-                  </div>
-                  <div className="text-right">
-                    <div className="flex items-center gap-1 text-yellow-600 mb-1">
-                      <Star className="w-4 h-4 fill-current" />
-                      <span className="font-bold">{completed.rating}.0</span>
-                    </div>
-                    <p className="text-sm font-bold">{completed.fee.toLocaleString()}원</p>
-                  </div>
-                </div>
-
-                <div className="mb-4">
-                  <p className="font-bold text-sm mb-2">작성한 소견</p>
-                  <div className="bg-green-50 border-2 border-green-200 p-3 rounded">
-                    <p className="text-sm text-gray-700 mb-2">{completed.opinion}</p>
-                    <div className={`inline-block px-2 py-1 text-xs font-bold rounded ${
-                      completed.visitRequired 
-                        ? "bg-red-100 text-red-700" 
-                        : "bg-blue-100 text-blue-700"
-                    }`}>
-                      {completed.visitRequired ? "⚠️ 병원 방문 필요" : "✓ 경과 관찰"}
-                    </div>
-                  </div>
-                </div>
-
-                {completed.review && (
-                  <div className="bg-yellow-50 border-2 border-yellow-200 p-3 rounded">
-                    <p className="font-bold text-sm mb-1">보호자 리뷰</p>
-                    <p className="text-sm text-gray-700">"{completed.review}"</p>
-                  </div>
-                )}
-              </WireframeBox>
-            ))}
-          </div>
-        )}
-
-        {/* Statistics */}
-        {activeTab === "stats" && (
-          <div className="space-y-6">
-            <div className="grid md:grid-cols-2 gap-6">
-              <WireframeBox label="MONTHLY CHART">
-                <h3 className="font-bold mb-4">월별 소견 요청 추이</h3>
-                <div className="w-full h-64 bg-gray-200 flex items-center justify-center text-gray-500 font-mono text-sm">
-                  [Recharts Line Chart]
-                  <br />
-                  월별 소견 요청 건수 그래프
-                </div>
-              </WireframeBox>
-
-              <WireframeBox label="RATING CHART">
-                <h3 className="font-bold mb-4">평점 분포</h3>
-                <div className="w-full h-64 bg-gray-200 flex items-center justify-center text-gray-500 font-mono text-sm">
-                  [Recharts Bar Chart]
-                  <br />
-                  평점별 리뷰 수 그래프
-                </div>
-              </WireframeBox>
+              </div>
             </div>
-
-            <WireframeBox label="REVENUE STATS">
-              <h3 className="font-bold mb-4">수익 통계</h3>
-              <div className="grid md:grid-cols-3 gap-6 mb-6">
-                <div className="bg-blue-50 p-4 rounded">
-                  <p className="text-sm text-gray-600 mb-1">이번 달</p>
-                  <p className="text-2xl font-bold text-blue-600">267,000원</p>
-                </div>
-                <div className="bg-green-50 p-4 rounded">
-                  <p className="text-sm text-gray-600 mb-1">지난 달</p>
-                  <p className="text-2xl font-bold text-green-600">320,000원</p>
-                </div>
-                <div className="bg-purple-50 p-4 rounded">
-                  <p className="text-sm text-gray-600 mb-1">총 누적</p>
-                  <p className="text-2xl font-bold text-purple-600">2,670,000원</p>
-                </div>
-              </div>
-              <div className="w-full h-48 bg-gray-200 flex items-center justify-center text-gray-500 font-mono text-sm">
-                [Recharts Area Chart]
-                <br />
-                월별 수익 추이
-              </div>
-            </WireframeBox>
-
-            <WireframeBox label="DISEASE DISTRIBUTION">
-              <h3 className="font-bold mb-4">질환별 소견 분포</h3>
-              <div className="w-full h-64 bg-gray-200 flex items-center justify-center text-gray-500 font-mono text-sm">
-                [Recharts Pie Chart]
-                <br />
-                질환별 소견 비율
-              </div>
-            </WireframeBox>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      </main>
     </div>
+  );
+}
+
+function formatDateTime(iso?: string | null) {
+  if (!iso) return "—";
+  try {
+    const d = new Date(iso);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  } catch {
+    return iso;
+  }
+}
+
+function StethoscopeMini() {
+  return (
+    <svg className="h-4 w-4 text-slate-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M6 4h3v6a3 3 0 106 0V4h3" />
+      <path d="M6 8H4a2 2 0 00-2 2v2a6 6 0 0012 0v-2" />
+    </svg>
   );
 }

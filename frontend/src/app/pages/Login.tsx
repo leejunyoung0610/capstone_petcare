@@ -7,7 +7,7 @@ import useAuthStore from "../../stores/authStore";
 
 export function Login() {
   const navigate = useNavigate();
-  const { login, isLoading, error, clearError } = useAuthStore();
+  const { login, vetLogin, isLoading, error, clearError, logout } = useAuthStore();
   const [userType, setUserType] = useState<"user" | "vet" | "admin">("user");
   const [formData, setFormData] = useState({ email: "", password: "" });
 
@@ -20,15 +20,29 @@ export function Login() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (userType === "vet") {
-      window.alert("수의사 로그인은 준비 중입니다.");
+      const ok = await vetLogin(formData.email, formData.password);
+      if (ok) navigate("/vet/dashboard");
       return;
     }
     if (userType === "admin") {
-      window.alert("관리자 로그인은 준비 중입니다.");
+      const ok = await login(formData.email, formData.password);
+      if (ok) {
+        const role = useAuthStore.getState().user?.role;
+        if (role !== "admin") {
+          logout();
+          window.alert("관리자 권한이 없는 계정입니다. DB에서 해당 User의 role을 admin으로 설정하거나 create_admin_user 스크립트로 계정을 만드세요.");
+        } else {
+          navigate("/admin/dashboard");
+        }
+      }
       return;
     }
     const ok = await login(formData.email, formData.password);
-    if (ok) navigate("/dashboard");
+    if (ok) {
+      const role = useAuthStore.getState().user?.role;
+      if (role === "admin") navigate("/admin/dashboard");
+      else navigate("/dashboard");
+    }
   };
 
   return (
@@ -159,9 +173,19 @@ export function Login() {
 
           <div className="mt-6 text-center text-sm">
             <span className="text-gray-600">계정이 없으신가요? </span>
-            <Link to="/register" className="text-blue-600 font-bold hover:underline">
-              {userType === "user" ? "회원가입" : userType === "vet" ? "수의사 등록" : ""}
-            </Link>
+            {userType === "user" && (
+              <Link to="/register" className="font-bold text-blue-600 hover:underline">
+                회원가입
+              </Link>
+            )}
+            {userType === "vet" && (
+              <Link to="/vet/register" className="font-bold text-blue-600 hover:underline">
+                수의사 신청
+              </Link>
+            )}
+            {userType === "admin" && (
+              <span className="text-gray-400">관리자 계정은 별도로 발급됩니다.</span>
+            )}
           </div>
         </WireframeBox>
 

@@ -11,6 +11,8 @@
 
 웹은 `frontend/`, 앱·DB 연동 API는 `backend/`, 이미지 추론 API는 `api/`에서 각각 실행합니다.
 
+조직 GitHub에 **프론트·백·AI 레포가 분리**되어 있을 때, 클론 후 포트·환경변수까지 한 번에 맞추는 방법은 [docs/GANADI_LOCAL_RUN.md](docs/GANADI_LOCAL_RUN.md)를 참고하세요.
+
 ---
 
 ## 환경 설정

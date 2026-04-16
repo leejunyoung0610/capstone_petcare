@@ -20,4 +20,14 @@ export const authAPI = {
   vetRegister: (data) => {
     return apiClient.post('/auth/vet/register', data);
   },
+
+   // 내 프로필 조회
+  getMe: () => {
+    return apiClient.get('/users/me');
+  },
+
+  // 프로필 수정
+  updateMe: (data) => {
+    return apiClient.put('/users/me', data);
+  },
 };

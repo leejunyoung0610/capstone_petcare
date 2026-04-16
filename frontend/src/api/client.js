@@ -1,7 +1,10 @@
 import axios from 'axios';
 
+const baseURL =
+  import.meta.env.VITE_API_URL?.replace(/\/$/, '') || 'http://localhost:8002/api';
+
 const apiClient = axios.create({
-  baseURL: 'http://localhost:8002/api',
+  baseURL: baseURL.endsWith('/api') ? baseURL : `${baseURL}/api`,
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
