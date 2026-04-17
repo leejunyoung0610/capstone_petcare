@@ -49,6 +49,7 @@ logs/
 # 임시 파일
 tmp/
 temp/
+temp_repos/
 *.tmp
 
 # 테스트 커버리지
