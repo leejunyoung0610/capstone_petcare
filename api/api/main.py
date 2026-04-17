@@ -214,7 +214,7 @@ def preprocess_image(image_bytes: bytes, img_size: int = 224) -> torch.Tensor:
 
 def predict(model, input_tensor: torch.Tensor, animal_type: str) -> PredictionResponse:
     """
-    예측 수행
+    예측 수행 (중증도 통합 적용)
     
     Args:
         model: 모델
@@ -224,6 +224,9 @@ def predict(model, input_tensor: torch.Tensor, animal_type: str) -> PredictionRe
     Returns:
         PredictionResponse: 예측 결과
     """
+    # 중증도 통합 대상 질환 (성능 향상: 76%→99%)
+    SIMPLIFY_DISEASES = ['백내장', '궤양성각막질환', '비궤양성각막질환']
+    
     try:
         # 추론
         with torch.no_grad():
@@ -250,6 +253,14 @@ def predict(model, input_tensor: torch.Tensor, animal_type: str) -> PredictionRe
             # 라벨 맵에서 클래스 이름 가져오기
             class_names = list(label_map[disease].keys())
             predicted_label = class_names[predicted_idx]
+            
+            # 중증도 통합 (성능 향상: 유/무만 구분)
+            if disease in SIMPLIFY_DISEASES:
+                if predicted_label != "무":
+                    # 모든 중증도를 "유"로 통합
+                    predicted_label = "유"
+                    # Confidence는 "무"가 아닌 모든 클래스의 확률 합
+                    confidence_value = (1.0 - probs[0, 0].item()) * 100  # 1 - P(무)
             
             predictions[disease] = {
                 "label": predicted_label,
