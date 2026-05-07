@@ -2,7 +2,7 @@ import apiClient from './client';
 
 // 소견 요청 전송
 export const createOpinion = async (data) => {
-  const response = await apiClient.post('/opinions', data);
+  const response = await apiClient.post('/opinions/request', data);
   return response.data;
 };
 
@@ -12,8 +12,22 @@ export const getMyOpinions = async () => {
   return response.data;
 };
 
-// 소견 상세 조회
-export const getOpinion = async (diagnosisId) => {
+// 소견 요청 취소
+export const cancelOpinion = async (opinionId) => {
+  const response = await apiClient.patch(`/opinions/${opinionId}/cancel`);
+  return response.data;
+};
+
+// 소견 단건 조회 — opinion.id 기준
+// (백엔드 GET /opinions/{diagnosis_id} 는 진단별 "최신 소견" 만 반환하므로,
+//  목록에서 특정 카드를 눌렀을 때는 by-id 를 사용한다.)
+export const getOpinion = async (opinionId) => {
+  const response = await apiClient.get(`/opinions/by-id/${opinionId}`);
+  return response.data;
+};
+
+// 진단 ID 로 그 진단에 달린 "최신 소견" 1건 조회 (보호자 전용)
+export const getLatestOpinionByDiagnosis = async (diagnosisId) => {
   const response = await apiClient.get(`/opinions/${diagnosisId}`);
   return response.data;
 };
@@ -51,4 +65,10 @@ export const downloadOpinionPDF = async (opinionId) => {
   link.click();
   link.remove();
   window.URL.revokeObjectURL(url);
+};
+
+// 리뷰 작성 (평점·리뷰)
+export const rateOpinion = async (opinionId, data) => {
+  const response = await apiClient.post(`/opinions/${opinionId}/rate`, data);
+  return response.data;
 };

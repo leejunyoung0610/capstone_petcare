@@ -42,3 +42,10 @@ export const getVetStats = async () => {
   const response = await apiClient.get('/vets/me/stats');
   return response.data;
 };
+
+// 카카오맵 병원 리스트와 GANADI 수의사 매칭
+// hospitals: [{ place_id, place_name, address, road_address, phone, x, y, distance_m }]
+export const matchHospitalsWithGanadi = async (hospitals) => {
+  const response = await apiClient.post('/vets/match-hospitals', { hospitals });
+  return response.data;
+};

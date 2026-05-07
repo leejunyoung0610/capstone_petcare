@@ -32,3 +32,13 @@ export const updatePet = async (petId, petData) => {
 export const deletePet = async (petId) => {
   await apiClient.delete(`/pets/${petId}`);
 };
+
+// 반려동물 프로필 사진 업로드
+export const uploadPetProfileImage = async (petId, file) => {
+  const fd = new FormData();
+  fd.append('file', file);
+  const response = await apiClient.post(`/pets/${petId}/profile-image`, fd, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return response.data;
+};

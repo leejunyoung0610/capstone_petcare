@@ -1,16 +1,32 @@
-import { useState } from "react";
-import { Link, useNavigate, useParams } from "react-router";
+import { useEffect, useState } from "react";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import { ChevronLeft } from "lucide-react";
-import { writeVetOpinion } from "../../api/opinions";
+import { writeVetOpinion, updateVetOpinion } from "../../api/opinions";
 
 export function VetOpinionWrite() {
   const { opinionId } = useParams<{ opinionId: string }>();
+  const [searchParams] = useSearchParams();
+  const isEdit = searchParams.get("edit") === "true";
   const navigate = useNavigate();
   const [content, setContent] = useState("");
   const [recommendation, setRecommendation] = useState("");
   const [visitRequired, setVisitRequired] = useState(false);
   const [serviceFee, setServiceFee] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  // 수정 모드일 때 기존 데이터 불러오기
+  useEffect(() => {
+    if (isEdit) {
+      const savedContent = searchParams.get("content") || "";
+      const savedRecommendation = searchParams.get("recommendation") || "";
+      const savedVisitRequired = searchParams.get("visit_required") === "true";
+      const savedServiceFee = searchParams.get("service_fee") || "";
+      setContent(savedContent);
+      setRecommendation(savedRecommendation);
+      setVisitRequired(savedVisitRequired);
+      setServiceFee(savedServiceFee);
+    }
+  }, [isEdit]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,13 +41,27 @@ export function VetOpinionWrite() {
     }
     setSubmitting(true);
     try {
-      await writeVetOpinion(id, {
-        content: content.trim(),
-        recommendation: recommendation.trim() || undefined,
-        visit_required: visitRequired,
-        service_fee: serviceFee.trim() ? Number(serviceFee) : undefined,
-      });
-      navigate("/vet/dashboard", { replace: true });
+      if (isEdit) {
+        await updateVetOpinion(id, {
+          content: content.trim(),
+          recommendation: recommendation.trim() || undefined,
+          visit_required: visitRequired,
+          service_fee: serviceFee.trim() ? Number(serviceFee) : undefined,
+        });
+        window.alert("소견이 수정되었습니다.");
+        navigate("/vet/dashboard", { replace: true });
+      } else {
+        await writeVetOpinion(id, {
+          content: content.trim(),
+          recommendation: recommendation.trim() || undefined,
+          visit_required: visitRequired,
+          service_fee: serviceFee.trim() ? Number(serviceFee) : undefined,
+        });
+        navigate(`/vet/opinions/${id}/complete`, {
+          replace: true,
+          state: { petName: "반려동물" }
+        });
+      }
     } catch (err: unknown) {
       const msg =
         typeof err === "object" && err !== null && "response" in err
@@ -53,7 +83,9 @@ export function VetOpinionWrite() {
           <ChevronLeft className="h-4 w-4" />
           대시보드로
         </Link>
-        <h1 className="mt-2 text-lg font-bold text-slate-900">소견 작성</h1>
+        <h1 className="mt-2 text-lg font-bold text-slate-900">
+          {isEdit ? "소견 수정" : "소견 작성"}
+        </h1>
         <p className="text-xs text-slate-500">요청 #{opinionId}</p>
       </header>
 
@@ -106,7 +138,7 @@ export function VetOpinionWrite() {
           disabled={submitting}
           className="w-full rounded-xl bg-blue-600 py-3 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
         >
-          {submitting ? "저장 중…" : "소견 제출"}
+          {submitting ? "저장 중…" : isEdit ? "소견 수정" : "소견 제출"}
         </button>
       </form>
     </div>

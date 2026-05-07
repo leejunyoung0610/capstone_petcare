@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { RouterProvider } from 'react-router';
 import useAuthStore from '../stores/authStore';
 import { router } from './routes';
+import { PWAUpdatePrompt } from './components/PWAUpdatePrompt';
 
 export default function App() {
   const checkAuth = useAuthStore((s) => s.checkAuth);
@@ -10,5 +11,10 @@ export default function App() {
     checkAuth();
   }, [checkAuth]);
 
-  return <RouterProvider router={router} />;
+  return (
+    <>
+      <RouterProvider router={router} />
+      <PWAUpdatePrompt />
+    </>
+  );
 }

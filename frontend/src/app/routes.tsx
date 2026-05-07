@@ -15,6 +15,15 @@ import { VetRegister } from './pages/VetRegister';
 import { VetProfile } from './pages/VetProfile';
 import { AdminDashboard } from './pages/AdminDashboard';
 import { OpinionDetail } from './pages/OpinionDetail';
+import { Notifications } from './pages/Notifications';
+import { VetOpinionComplete } from './pages/VetOpinionComplete';
+import { VetDiagnosisDetail } from './pages/VetDiagnosisDetail';
+import { OpinionList } from './pages/OpinionList';
+import { ReviewWrite } from './pages/ReviewWrite';
+import { Announcements } from './pages/Announcements';
+import { AnnouncementDetail } from './pages/AnnouncementDetail';
+import { DiseaseDetail } from './pages/DiseaseDetail';
+import { KakaoCallback } from './pages/KakaoCallback';
 
 import Register from '../pages/auth/Register';
 import Dashboard from '../pages/Dashboard';
@@ -23,6 +32,7 @@ import PetForm from '../pages/pets/PetForm';
 import DiagnoseNew from '../pages/diagnosis/DiagnoseNew';
 import DiagnoseResult from '../pages/diagnosis/DiagnoseResult';
 import DiagnosisHistory from '../pages/diagnosis/DiagnosisHistory';
+import PetDetail from '../pages/pets/PetDetail';
 
 function ProtectedLayout() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
@@ -54,19 +64,30 @@ function AdminLayout() {
 export const router = createBrowserRouter([
   { path: '/', Component: Home },
   { path: '/login', Component: Login },
+  { path: '/auth/kakao/callback', Component: KakaoCallback }, 
   { path: '/register', Component: Register },
   { path: '/vet/register', Component: VetRegister },
 
   { path: '/vets', Component: VetSearch },
   { path: '/opinion-request/:vetId', Component: OpinionRequest },
+  { path: '/opinions', Component: OpinionList },
   { path: '/opinions/:requestId', Component: OpinionDetail },
+  { path: '/opinions/:opinionId/review', Component: ReviewWrite },
+  { path: '/notifications', Component: Notifications },
   { path: '/mypage', Component: MyPage },
   { path: '/encyclopedia', Component: DiseaseEncyclopedia },
+  { path: '/encyclopedia/:id', Component: DiseaseDetail },
+  { path: '/announcements', Component: Announcements },
+  { path: '/announcements/:id', Component: AnnouncementDetail },
+  
   { path: '/vet', Component: VetLayout, children: [
     { path: 'dashboard', Component: VetDashboard },
     { path: 'profile', Component: VetProfile },
     { path: 'opinions/:opinionId/write', Component: VetOpinionWrite },
+    { path: 'opinions/:opinionId/complete', Component: VetOpinionComplete },
+    { path: 'diagnosis/:diagnosisId', Component: VetDiagnosisDetail },
   ]},
+
   { path: '/admin', Component: AdminLayout, children: [
     { path: 'dashboard', Component: AdminDashboard },
   ]},
@@ -80,6 +101,7 @@ export const router = createBrowserRouter([
           { path: 'dashboard', Component: Dashboard },
           { path: 'pets', Component: PetList },
           { path: 'pets/new', Component: PetForm },
+          { path: 'pets/:id', Component: PetDetail },
           { path: 'pets/:id/edit', Component: PetForm },
           { path: 'diagnosis/history', Component: DiagnosisHistory },
           /* AI 분석·결과 — AppShell로 상단바(AppHeader) 유지 (diagnosis/:id 보다 구체적인 경로를 먼저) */

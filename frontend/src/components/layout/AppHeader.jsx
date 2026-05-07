@@ -1,12 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router';
 import { Menu, User, Bell } from 'lucide-react';
 import useAuthStore from '../../stores/authStore';
 import { cn } from '../../lib/utils';
+import { getNotifications } from '../../api/notifications';
 
 const navClass = ({ isActive }) =>
   cn(
-    'rounded-lg px-2 py-1 font-mono text-[13px] font-medium transition-colors',
+    'rounded-lg px-2 py-1 text-[13px] font-medium transition-colors',
     isActive
       ? 'bg-blue-50 font-semibold text-brand-link'
       : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
@@ -17,6 +18,16 @@ export default function AppHeader() {
   const logout = useAuthStore((s) => s.logout);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      getNotifications()
+        .then((data) => setUnreadCount(data.filter((n) => !n.is_read).length))
+        .catch(() => { });
+    }
+  }, [isAuthenticated]);
 
   const handleLogout = () => {
     logout();
@@ -46,6 +57,9 @@ export default function AppHeader() {
             <NavLink to="/encyclopedia" className={navClass}>
               질환 백과
             </NavLink>
+            <NavLink to="/announcements" className={navClass}>
+              공지사항
+            </NavLink>
             {isAuthenticated && (
               <>
                 <NavLink to="/pets" className={navClass}>
@@ -54,36 +68,38 @@ export default function AppHeader() {
                 <NavLink to="/dashboard" className={navClass}>
                   대시보드
                 </NavLink>
-                <NavLink to="/mypage" className={navClass}>
-                  마이페이지
-                </NavLink>
               </>
             )}
           </nav>
         </div>
 
         <div className="flex items-center gap-1 sm:gap-2">
-          <button
-            type="button"
-            className="rounded-xl p-2.5 text-slate-600 transition hover:bg-slate-100"
+          <Link
+            to="/notifications"
+            className="relative rounded-xl p-2.5 text-slate-600 transition hover:bg-slate-100"
             aria-label="알림"
           >
             <Bell className="size-5" />
-          </button>
+            {unreadCount > 0 && (
+              <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white">
+                {unreadCount > 9 ? "9+" : unreadCount}
+              </span>
+            )}
+          </Link>
           {isAuthenticated ? (
             <>
               <button
                 type="button"
                 className="hidden rounded-xl p-2.5 text-slate-600 hover:bg-slate-100 sm:block"
                 aria-label="계정"
-                onClick={() => navigate('/dashboard')}
+                onClick={() => navigate('/mypage')}
               >
                 <User className="size-5" />
               </button>
               <button
                 type="button"
                 onClick={handleLogout}
-                className="hidden rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 lg:inline"
+                className="hidden rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 lg:inline"
               >
                 로그아웃
               </button>
@@ -92,13 +108,13 @@ export default function AppHeader() {
             <div className="hidden items-center gap-2 sm:flex">
               <Link
                 to="/login"
-                className="rounded-xl px-3 py-2 font-mono text-xs font-semibold text-slate-700 hover:bg-slate-100"
+                className="rounded-xl px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100"
               >
                 로그인
               </Link>
               <Link
                 to="/register"
-                className="rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-xs font-semibold text-brand-link shadow-sm hover:bg-slate-50"
+                className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-brand-link shadow-sm hover:bg-slate-50"
               >
                 회원가입
               </Link>
@@ -117,7 +133,7 @@ export default function AppHeader() {
 
       {mobileOpen && (
         <div className="border-t border-slate-200/80 bg-white/95 px-4 py-3 backdrop-blur-md lg:hidden">
-          <nav className="flex flex-col gap-1 font-mono text-sm">
+          <nav className="flex flex-col gap-1 text-sm">
             <NavLink to="/diagnosis/new" className={navClass} onClick={() => setMobileOpen(false)}>
               AI 분석
             </NavLink>
@@ -127,6 +143,9 @@ export default function AppHeader() {
             <NavLink to="/encyclopedia" className={navClass} onClick={() => setMobileOpen(false)}>
               질환 백과
             </NavLink>
+            <NavLink to="/announcements" className={navClass}>
+              공지사항
+            </NavLink>
             {isAuthenticated && (
               <>
                 <NavLink to="/pets" className={navClass} onClick={() => setMobileOpen(false)}>
@@ -134,9 +153,6 @@ export default function AppHeader() {
                 </NavLink>
                 <NavLink to="/dashboard" className={navClass} onClick={() => setMobileOpen(false)}>
                   대시보드
-                </NavLink>
-                <NavLink to="/mypage" className={navClass} onClick={() => setMobileOpen(false)}>
-                  마이페이지
                 </NavLink>
                 <button
                   type="button"

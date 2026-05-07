@@ -41,9 +41,12 @@ const useAuthStore = create((set) => ({
     set({ isLoading: true, error: null });
     try {
       const response = await authAPI.login(email, password);
-      const { access_token, name, role } = response.data;
-      
+      const { access_token, refresh_token, name, role } = response.data;
+
       localStorage.setItem('token', access_token);
+      if (refresh_token) {
+        localStorage.setItem('refreshToken', refresh_token);
+      }
       const user = { name, role };
       localStorage.setItem(USER_KEY, JSON.stringify(user));
       set({
@@ -52,7 +55,7 @@ const useAuthStore = create((set) => ({
         isAuthenticated: true,
         isLoading: false,
       });
-      
+
       return true;
     } catch (error) {
       set({
@@ -94,6 +97,22 @@ const useAuthStore = create((set) => ({
     set({ isLoading: true, error: null });
     try {
       await authAPI.vetRegister(data);
+      set({ isLoading: false });
+      return true;
+    } catch (error) {
+      set({
+        error: formatError(error),
+        isLoading: false,
+      });
+      return false;
+    }
+  },
+
+  // 수의사 회원가입 + 면허증/증빙 첨부 (관리자 승인 필요)
+  vetRegisterWithDocs: async (payload) => {
+    set({ isLoading: true, error: null });
+    try {
+      await authAPI.vetRegisterWithDocs(payload);
       set({ isLoading: false });
       return true;
     } catch (error) {
@@ -153,6 +172,16 @@ const useAuthStore = create((set) => ({
 
   // 에러 클리어
   clearError: () => set({ error: null }),
+
+  // 카카오 로그인 후 토큰/유저 세팅
+  setAuth: ({ token, user }) => {
+    localStorage.setItem(USER_KEY, JSON.stringify(user));
+    set({
+      token,
+      user,
+      isAuthenticated: true,
+    });
+  },
 }));
 
 export default useAuthStore;

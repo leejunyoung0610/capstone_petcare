@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { useDropzone } from 'react-dropzone';
 import ReactCrop from 'react-image-crop';
@@ -7,8 +7,6 @@ import { Upload as UploadIcon, Camera } from 'lucide-react';
 import usePetStore from '../../stores/petStore';
 import useDiagnosisStore from '../../stores/diagnosisStore';
 import Button from '../../components/ui/Button';
-import { WireframeBox } from '../../components/WireframeBox';
-import { WireframeButton } from '../../components/WireframeButton';
 
 export default function DiagnoseNew() {
   const navigate = useNavigate();
@@ -24,6 +22,7 @@ export default function DiagnoseNew() {
   const [crop, setCrop] = useState({ unit: '%', width: 90, aspect: 1 });
   const [completedCrop, setCompletedCrop] = useState(null);
   const [showCrop, setShowCrop] = useState(false);
+  const imgRef = useRef(null);
 
   useEffect(() => {
     fetchPets();
@@ -46,28 +45,29 @@ export default function DiagnoseNew() {
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: {
-      'image/*': ['.jpeg', '.jpg', '.png']
+      'image/jpeg': ['.jpeg', '.jpg'],
+      'image/png': ['.png'],
     },
     maxFiles: 1,
-    multiple: false
+    maxSize: 5 * 1024 * 1024,
+    multiple: false,
+    onDropRejected: (rejectedFiles) => {
+      const err = rejectedFiles[0]?.errors[0];
+      if (err?.code === 'file-too-large') {
+        alert('이미지 크기는 5MB 이하여야 합니다.');
+      } else if (err?.code === 'file-invalid-type') {
+        alert('JPG, PNG 형식의 이미지만 업로드 가능합니다.');
+      }
+    },
   });
 
   const handleAnalyze = async () => {
-    if (!selectedPetId) {
-      alert('반려동물을 선택해주세요.');
-      return;
-    }
-    if (!image) {
-      alert('이미지를 업로드해주세요.');
-      return;
-    }
-
+    if (!selectedPetId) { alert('반려동물을 선택해주세요.'); return; }
+    if (!image) { alert('이미지를 업로드해주세요.'); return; }
     try {
       const result = await analyzePet(parseInt(selectedPetId), image);
       navigate(`/diagnosis/${result.id}`);
-    } catch (err) {
-      // Error handled by store
-    }
+    } catch (err) { }
   };
 
   const handleReset = () => {
@@ -77,206 +77,273 @@ export default function DiagnoseNew() {
     setCrop({ unit: '%', width: 90, aspect: 1 });
   };
 
+  // 단계 진행 상태 — 1: 항상, 2: 사진 선택됨, 3: 분석 가능
+  const step = !selectedPetId ? 1 : !image ? 2 : 3;
+
   return (
-    <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 md:py-14">
-      <p className="font-mono text-[11px] font-bold uppercase tracking-[0.2em] text-brand-link">Screening</p>
-      <h1 className="font-display mt-2 text-3xl font-bold tracking-tight text-slate-900 md:text-4xl">
+    <div className="mx-auto max-w-6xl px-4 py-5 sm:px-6 sm:py-10 md:py-14">
+      {/* 헤더 — 모바일 압축 */}
+      <p className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-blue-600">
+        Screening
+      </p>
+      <h1 className="mt-1 text-xl font-bold tracking-tight text-slate-900 sm:mt-2 sm:text-3xl md:text-4xl">
         안구 사진 AI 스크리닝
       </h1>
-      <p className="mt-3 max-w-2xl text-[15px] leading-relaxed text-slate-600">
-        반려동물을 선택한 뒤 선명한 눈 사진을 올려 주세요. 결과는 참고용이며, 이상이 의심되면 반드시
-        병원 진료를 받으세요.
+      <p className="mt-1.5 max-w-2xl text-xs leading-relaxed text-slate-500 sm:mt-3 sm:text-sm">
+        반려동물을 선택하고 선명한 눈 사진을 올려주세요. 결과는 참고용입니다.
       </p>
 
-      <div className="mb-12 mt-10 rounded-2xl border border-slate-200/90 bg-white/90 px-4 py-6 shadow-sm backdrop-blur-sm sm:px-8">
-        <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-4">
-          <div className="flex items-center gap-2.5 rounded-full bg-blue-50 px-3 py-2 ring-1 ring-blue-100">
-            <div className="flex size-8 items-center justify-center rounded-full bg-brand-link text-sm font-bold text-white shadow-sm">
-              1
-            </div>
-            <span className="font-mono text-[13px] font-semibold text-slate-800">반려동물</span>
-          </div>
-          <div className="hidden h-px w-10 bg-gradient-to-r from-transparent via-slate-300 to-transparent sm:block md:w-14" />
-          <div
-            className={`flex items-center gap-2.5 rounded-full px-3 py-2 ring-1 ${
-              image ? 'bg-blue-50 ring-blue-100' : 'bg-slate-50 ring-slate-200/80'
-            }`}
-          >
-            <div
-              className={`flex size-8 items-center justify-center rounded-full text-sm font-bold text-white shadow-sm ${
-                image ? 'bg-brand-link' : 'bg-slate-400'
-              }`}
-            >
-              2
-            </div>
-            <span
-              className={`font-mono text-[13px] ${image ? 'font-semibold text-slate-800' : 'text-slate-500'}`}
-            >
-              사진 업로드
-            </span>
-          </div>
-          <div className="hidden h-px w-10 bg-gradient-to-r from-transparent via-slate-300 to-transparent sm:block md:w-14" />
-          <div className="flex items-center gap-2.5 rounded-full bg-slate-50 px-3 py-2 ring-1 ring-slate-200/80">
-            <div className="flex size-8 items-center justify-center rounded-full bg-slate-300 text-sm font-bold text-white">
-              3
-            </div>
-            <span className="font-mono text-[13px] text-slate-500">AI 분석</span>
-          </div>
+      {/* 진행 상태 — 모바일은 작은 한 줄, sm+ 는 풍성하게 */}
+      <div className="mb-5 mt-4 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:mb-10 sm:mt-8 sm:p-5">
+        <div className="flex items-center justify-between gap-1 sm:justify-center sm:gap-3">
+          <StepPill index={1} label="반려동물" active={step >= 1} />
+          <Connector active={step >= 2} />
+          <StepPill index={2} label="사진 업로드" active={step >= 2} />
+          <Connector active={step >= 3} />
+          <StepPill index={3} label="AI 분석" active={step >= 3} />
         </div>
       </div>
 
       {error && (
-        <div className="mb-6 rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
+        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600 sm:mb-6 sm:p-4">
           {error}
         </div>
       )}
 
-        <div className="grid gap-8 md:grid-cols-2">
-          <div className="space-y-6">
-            <WireframeBox label="PET SELECTOR" className="bg-card">
-              <h3 className="mb-4 font-mono font-bold text-foreground">1. 반려동물 선택</h3>
-              <select
-                className="w-full rounded-md border-2 border-border bg-input-background px-3 py-3 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-brand-link/30"
-                value={selectedPetId}
-                onChange={(e) => setSelectedPetId(e.target.value)}
+      <div className="grid gap-4 sm:gap-6 md:grid-cols-2">
+        <div className="space-y-3 sm:space-y-4">
+          {/* 반려동물 선택 */}
+          <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+            <h3 className="mb-2.5 text-sm font-bold text-slate-900 sm:text-base">
+              1. 반려동물 선택
+            </h3>
+            <select
+              className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              value={selectedPetId}
+              onChange={(e) => setSelectedPetId(e.target.value)}
+            >
+              <option value="">반려동물을 선택하세요</option>
+              {pets.map((pet) => (
+                <option key={pet.id} value={pet.id}>
+                  {pet.name} ({pet.species === 'dog' ? '강아지' : '고양이'}
+                  {pet.breed && `, ${pet.breed}`}
+                  {pet.age && `, ${pet.age}세`})
+                </option>
+              ))}
+            </select>
+            <Link
+              to="/pets/new"
+              className="mt-2 inline-block text-xs font-medium text-blue-600 hover:underline sm:text-sm"
+            >
+              + 새 반려동물 등록하기
+            </Link>
+          </section>
+
+          {/* 이미지 업로드 */}
+          <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+            <h3 className="mb-2.5 text-sm font-bold text-slate-900 sm:text-base">
+              2. 눈 사진 업로드
+            </h3>
+            {!imagePreview ? (
+              <div
+                {...getRootProps()}
+                className={`cursor-pointer rounded-xl border-2 border-dashed p-6 text-center transition sm:p-10 ${
+                  isDragActive
+                    ? 'border-blue-500 bg-blue-50'
+                    : 'border-slate-200 hover:border-blue-300'
+                }`}
               >
-                <option value="">반려동물을 선택하세요</option>
-                {pets.map((pet) => (
-                  <option key={pet.id} value={pet.id}>
-                    {pet.name} ({pet.species === 'dog' ? '강아지' : '고양이'}
-                    {pet.breed && `, ${pet.breed}`}
-                    {pet.age && `, ${pet.age}세`})
-                  </option>
-                ))}
-              </select>
-              <Link to="/pets/new" className="mt-3 block font-mono text-sm text-brand-link hover:underline">
-                + 새 반려동물 등록하기
-              </Link>
-            </WireframeBox>
-
-            <WireframeBox label="IMAGE UPLOAD" className="bg-card">
-              <h3 className="mb-4 font-mono font-bold text-foreground">2. 눈 사진 업로드</h3>
-
-              {!imagePreview ? (
-                <div
-                  {...getRootProps()}
-                  className={`cursor-pointer rounded-lg border-4 border-dashed p-12 text-center transition ${
-                    isDragActive
-                      ? 'border-brand-link bg-blue-50'
-                      : 'border-muted-foreground/40 hover:border-brand-link/50'
-                  }`}
-                >
-                  <input {...getInputProps()} />
-                  <UploadIcon className="mx-auto mb-4 size-16 text-muted-foreground" />
-                  <p className="mb-2 font-mono text-sm text-muted-foreground">
-                    {isDragActive
-                      ? '여기에 이미지를 놓으세요'
-                      : '클릭하거나 드래그하여 사진 업로드'}
-                  </p>
-                  <p className="text-xs text-muted-foreground">JPG, PNG 파일 지원</p>
-                </div>
-              ) : (
-                <div>
+                <input {...getInputProps()} />
+                <UploadIcon className="mx-auto mb-2 h-8 w-8 text-slate-300 sm:mb-3 sm:h-10 sm:w-10" />
+                <p className="mb-1 text-xs text-slate-500 sm:text-sm">
+                  {isDragActive ? '여기에 이미지를 놓으세요' : '클릭 또는 드래그하여 업로드'}
+                </p>
+                <p className="text-[11px] text-slate-400 sm:text-xs">
+                  JPG · PNG · 최대 5MB
+                </p>
+              </div>
+            ) : (
+              <div>
+                {showCrop ? (
+                  <div className="mb-3 sm:mb-4">
+                    <ReactCrop
+                      crop={crop}
+                      onChange={(c) => setCrop(c)}
+                      onComplete={(c) => setCompletedCrop(c)}
+                    >
+                      <img
+                        ref={imgRef}
+                        src={imagePreview}
+                        alt="Preview"
+                        className="max-w-full rounded-lg"
+                      />
+                    </ReactCrop>
+                  </div>
+                ) : (
+                  <div className="mb-3 sm:mb-4">
+                    <img src={imagePreview} alt="Preview" className="w-full rounded-lg" />
+                  </div>
+                )}
+                <div className="flex gap-2">
+                  <Button variant="secondary" onClick={handleReset} className="flex-1">
+                    다시 선택
+                  </Button>
                   {showCrop && (
-                    <div className="mb-4">
-                      <ReactCrop
-                        crop={crop}
-                        onChange={(c) => setCrop(c)}
-                        onComplete={(c) => setCompletedCrop(c)}
-                      >
-                        <img src={imagePreview} alt="Preview" className="max-w-full" />
-                      </ReactCrop>
-                    </div>
-                  )}
-                  <div className="flex gap-2">
                     <Button
-                      variant="secondary"
-                      onClick={handleReset}
+                      variant="primary"
+                      onClick={() => {
+                        if (completedCrop && imgRef.current) {
+                          const canvas = document.createElement('canvas');
+                          const scaleX = imgRef.current.naturalWidth / imgRef.current.width;
+                          const scaleY = imgRef.current.naturalHeight / imgRef.current.height;
+                          canvas.width = completedCrop.width * scaleX;
+                          canvas.height = completedCrop.height * scaleY;
+                          const ctx = canvas.getContext('2d');
+                          ctx.drawImage(
+                            imgRef.current,
+                            completedCrop.x * scaleX,
+                            completedCrop.y * scaleY,
+                            completedCrop.width * scaleX,
+                            completedCrop.height * scaleY,
+                            0,
+                            0,
+                            canvas.width,
+                            canvas.height,
+                          );
+                          canvas.toBlob((blob) => {
+                            if (blob) {
+                              const croppedFile = new File([blob], 'cropped.jpg', { type: 'image/jpeg' });
+                              setImage(croppedFile);
+                              setImagePreview(URL.createObjectURL(blob));
+                            }
+                          }, 'image/jpeg');
+                        }
+                        setShowCrop(false);
+                      }}
                       className="flex-1"
                     >
-                      다시 선택
+                      크롭 완료
                     </Button>
-                    {showCrop && (
-                      <Button
-                        variant="primary"
-                        onClick={() => setShowCrop(false)}
-                        className="flex-1"
-                      >
-                        크롭 완료
-                      </Button>
-                    )}
-                  </div>
+                  )}
                 </div>
-              )}
-
-              <div className="mt-4">
-                <WireframeButton variant="outline" type="button" className="flex w-full items-center justify-center gap-2" disabled>
-                  <Camera className="size-4" />
-                  카메라로 촬영 (준비 중)
-                </WireframeButton>
               </div>
-            </WireframeBox>
-
-            <Button
-              variant="primary"
-              onClick={handleAnalyze}
-              loading={loading}
-              disabled={!selectedPetId || !image}
-              className="h-12 w-full text-base"
+            )}
+            <button
+              type="button"
+              disabled
+              className="mt-2.5 flex w-full cursor-not-allowed items-center justify-center gap-1.5 rounded-lg border border-slate-200 py-2 text-xs text-slate-400 sm:mt-3 sm:text-sm"
             >
-              AI 분석 시작하기
-            </Button>
-          </div>
+              <Camera className="h-4 w-4" />
+              카메라로 촬영 (준비 중)
+            </button>
+          </section>
 
-          <div className="space-y-6">
-            <WireframeBox label="GUIDE" className="bg-card">
-              <h3 className="mb-4 flex items-center gap-2 font-mono font-bold text-foreground">
-                <span className="text-2xl">💡</span>
-                좋은 사진 촬영 가이드
-              </h3>
+          <Button
+            variant="primary"
+            onClick={handleAnalyze}
+            loading={loading}
+            disabled={!selectedPetId || !image}
+            className="h-12 w-full text-sm font-semibold sm:text-base"
+          >
+            AI 분석 시작하기
+          </Button>
+        </div>
 
-              <div className="space-y-4">
-                {[
-                  ['밝은 조명에서 촬영', '자연광이나 밝은 실내 조명 권장'],
-                  ['눈 부분에 초점', '눈이 화면의 중앙에 크게 보이도록'],
-                  ['흔들림 없이 선명하게', '흐릿한 사진은 정확도가 낮아집니다'],
-                  ['정면 촬영 권장', '측면보다는 정면에서 촬영'],
-                ].map(([t, d]) => (
-                  <div key={t} className="flex gap-3">
-                    <span className="text-2xl">✅</span>
-                    <div>
-                      <p className="text-sm font-bold text-foreground">{t}</p>
-                      <p className="text-xs text-muted-foreground">{d}</p>
-                    </div>
+        <div className="space-y-3 sm:space-y-4">
+          {/* 촬영 가이드 */}
+          <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+            <h3 className="mb-3 flex items-center gap-2 text-sm font-bold text-slate-900 sm:text-base">
+              <span className="text-base sm:text-xl">💡</span>
+              좋은 사진 촬영 가이드
+            </h3>
+            <ul className="space-y-2.5">
+              {[
+                ['밝은 조명에서 촬영', '자연광이나 밝은 실내 조명'],
+                ['눈 부분에 초점', '눈이 화면 중앙에 크게'],
+                ['흔들림 없이 선명하게', '흐릿하면 정확도 ↓'],
+                ['정면 촬영 권장', '측면보다 정면이 좋음'],
+              ].map(([t, d]) => (
+                <li key={t} className="flex gap-2.5">
+                  <span className="text-sm sm:text-base">✅</span>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-slate-900">{t}</p>
+                    <p className="text-xs text-slate-500">{d}</p>
                   </div>
-                ))}
-              </div>
-            </WireframeBox>
+                </li>
+              ))}
+            </ul>
+          </section>
 
-            <WireframeBox label="DISEASES" className="bg-blue-50/80">
-              <h3 className="mb-4 font-mono font-bold text-foreground">검출 가능 질환</h3>
-              <div className="space-y-3 text-sm">
-                <div>
-                  <p className="mb-1 font-bold text-brand-link">🐶 강아지 (10종)</p>
-                  <p className="text-xs text-muted-foreground">
-                    결막염, 각막궤양, 백내장, 녹내장, 유루증, 각막부골편, 각막염, 안검내반증 등
-                  </p>
-                </div>
-                <div>
-                  <p className="mb-1 font-bold text-emerald-600">🐱 고양이 (5종)</p>
-                  <p className="text-xs text-muted-foreground">결막염, 각막궤양, 각막부골편, 유루증 등</p>
-                </div>
+          {/* 검출 가능 질환 */}
+          <section className="rounded-2xl border border-blue-100 bg-blue-50 p-4 shadow-sm sm:p-5">
+            <h3 className="mb-2.5 text-sm font-bold text-slate-900 sm:text-base">
+              검출 가능 질환
+            </h3>
+            <div className="space-y-2 text-sm">
+              <div>
+                <p className="mb-0.5 text-xs font-bold text-blue-600 sm:text-sm">
+                  🐶 강아지 10종
+                </p>
+                <p className="text-[11px] leading-relaxed text-slate-600 sm:text-xs">
+                  결막염, 각막궤양, 백내장, 녹내장, 유루증, 각막부골편, 각막염, 안검내반증 외
+                </p>
               </div>
-            </WireframeBox>
-
-            <div className="rounded-lg border-2 border-amber-300 bg-amber-50 p-4">
-              <p className="text-xs text-foreground">
-                <strong>⚠️ 알림:</strong> 본 서비스는 사전 스크리닝 목적이며 의료기기가 아닙니다. 최종 진단은
-                반드시 동물병원에서 받으시기 바랍니다.
-              </p>
+              <div>
+                <p className="mb-0.5 text-xs font-bold text-emerald-600 sm:text-sm">
+                  🐱 고양이 5종
+                </p>
+                <p className="text-[11px] leading-relaxed text-slate-600 sm:text-xs">
+                  결막염, 각막궤양, 각막부골편, 유루증 외
+                </p>
+              </div>
             </div>
+          </section>
+
+          {/* 주의사항 */}
+          <div className="flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50 p-3 sm:p-4">
+            <span className="text-base sm:text-lg">⚠️</span>
+            <p className="text-[11px] leading-relaxed text-slate-600 sm:text-xs">
+              본 서비스는 사전 스크리닝 목적이며 의료기기가 아닙니다. 최종 진단은 동물병원에서 받으세요.
+            </p>
           </div>
         </div>
+      </div>
     </div>
+  );
+}
+
+/** 진행 단계 1·2·3 칩 */
+function StepPill({ index, label, active }) {
+  return (
+    <div
+      className={`flex min-w-0 items-center gap-1.5 rounded-full px-2.5 py-1.5 ring-1 sm:gap-2.5 sm:px-3 sm:py-2 ${
+        active ? 'bg-blue-50 ring-blue-100' : 'bg-slate-50 ring-slate-200'
+      }`}
+    >
+      <span
+        className={`flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-white sm:h-8 sm:w-8 sm:text-sm ${
+          active ? 'bg-blue-600' : 'bg-slate-300'
+        }`}
+      >
+        {index}
+      </span>
+      <span
+        className={`truncate text-[11px] sm:text-sm ${
+          active ? 'font-semibold text-slate-800' : 'text-slate-400'
+        }`}
+      >
+        {label}
+      </span>
+    </div>
+  );
+}
+
+function Connector({ active }) {
+  return (
+    <div
+      className={`h-px flex-1 sm:w-10 sm:flex-initial md:w-14 ${
+        active ? 'bg-blue-200' : 'bg-slate-200'
+      }`}
+    />
   );
 }

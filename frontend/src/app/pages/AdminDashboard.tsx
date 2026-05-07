@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
-import { format } from "date-fns";
+import { format, addHours } from 'date-fns';
 import {
   ResponsiveContainer,
   BarChart,
@@ -11,6 +11,10 @@ import {
   YAxis,
   Tooltip,
   CartesianGrid,
+  PieChart,
+  Pie,
+  Cell,
+  Legend,
 } from "recharts";
 import {
   Users,
@@ -26,12 +30,16 @@ import {
   Search,
   Shield,
   Activity,
+  FileText,
+  Eye as EyeIcon,
+  X as CloseIcon,
 } from "lucide-react";
 import useAuthStore from "../../stores/authStore";
 import {
   getAdminStats,
   getAdminUsers,
   getAdminVets,
+  getAdminVetDetail,
   getAdminReports,
   suspendAdminUser,
   deleteAdminUser,
@@ -39,6 +47,18 @@ import {
   rejectAdminVet,
   patchAdminReport,
 } from "../../api/admin";
+
+import { serverOrigin } from "../../api/client";
+
+function buildFileUrl(path?: string | null) {
+  if (!path) return null;
+  if (/^https?:\/\//.test(path)) return path;
+  return `${serverOrigin}/${path.replace(/^\/+/, "")}`;
+}
+
+function isPdfPath(path?: string | null) {
+  return !!path && /\.pdf(\?|$)/i.test(path);
+}
 
 type Tab = "overview" | "users" | "vets" | "reports";
 
@@ -73,7 +93,19 @@ interface AdminVetRow {
   name: string;
   hospital_name?: string | null;
   approval_status: string;
+  license_number?: string | null;
   created_at: string;
+}
+
+interface AdminVetDetail extends AdminVetRow {
+  address?: string | null;
+  phone?: string | null;
+  specialty?: string | null;
+  business_hours?: string | null;
+  license_image_url?: string | null;
+  employment_doc_url?: string | null;
+  rejection_reason?: string | null;
+  reviewed_at?: string | null;
 }
 
 interface AdminReportRow {
@@ -113,9 +145,17 @@ export function AdminDashboard() {
   const [vetFilter, setVetFilter] = useState("");
   const [reportStatus, setReportStatus] = useState("");
   const [searchUser, setSearchUser] = useState("");
+  const [roleFilter, setRoleFilter] = useState("");
+  const [dateFilter, setDateFilter] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [actionId, setActionId] = useState<number | null>(null);
+
+  // 수의사 검토 모달 상태
+  const [reviewVet, setReviewVet] = useState<AdminVetDetail | null>(null);
+  const [reviewLoading, setReviewLoading] = useState(false);
+  const [showRejectInput, setShowRejectInput] = useState(false);
+  const [rejectReason, setRejectReason] = useState("");
 
   const loadStats = useCallback(async () => {
     const data = await getAdminStats(90);
@@ -142,7 +182,7 @@ export function AdminDashboard() {
   }, [reportStatus]);
 
   useEffect(() => {
-    loadStats().catch(() => {});
+    loadStats().catch(() => { });
   }, [loadStats]);
 
   useEffect(() => {
@@ -236,11 +276,14 @@ export function AdminDashboard() {
     }
   };
 
-  const handleRejectVet = async (id: number) => {
-    if (!window.confirm("이 수의사 신청을 거부할까요?")) return;
+  const handleRejectVet = async (id: number, reason: string) => {
+    if (!reason.trim()) {
+      window.alert("반려 사유를 입력해주세요.");
+      return;
+    }
     setActionId(id);
     try {
-      await rejectAdminVet(id);
+      await rejectAdminVet(id, reason.trim());
       await refreshAfterMutation();
     } catch (e: unknown) {
       const msg =
@@ -251,6 +294,43 @@ export function AdminDashboard() {
     } finally {
       setActionId(null);
     }
+  };
+
+  // 수의사 상세 모달 열기
+  const openVetReview = async (vetId: number) => {
+    setReviewLoading(true);
+    setShowRejectInput(false);
+    setRejectReason("");
+    try {
+      const data = await getAdminVetDetail(vetId);
+      setReviewVet(data);
+    } catch (e: unknown) {
+      const msg =
+        typeof e === "object" && e !== null && "response" in e
+          ? (e as { response?: { data?: { detail?: string } } }).response?.data?.detail
+          : "상세 정보를 불러오지 못했습니다.";
+      window.alert(typeof msg === "string" ? msg : "상세 정보를 불러오지 못했습니다.");
+    } finally {
+      setReviewLoading(false);
+    }
+  };
+
+  const closeVetReview = () => {
+    setReviewVet(null);
+    setShowRejectInput(false);
+    setRejectReason("");
+  };
+
+  const submitApproveFromModal = async () => {
+    if (!reviewVet) return;
+    await handleApproveVet(reviewVet.id);
+    closeVetReview();
+  };
+
+  const submitRejectFromModal = async () => {
+    if (!reviewVet) return;
+    await handleRejectVet(reviewVet.id, rejectReason);
+    closeVetReview();
   };
 
   const handleReportStatus = async (id: number, status: string) => {
@@ -287,13 +367,30 @@ export function AdminDashboard() {
     [stats]
   );
 
+  const diseaseDistributionChart = useMemo(
+    () => (stats?.disease_distribution ?? []).map((d) => ({
+      name: d.disease,
+      value: d.count,
+    })),
+    [stats]
+  );
+
+  const PIE_COLORS = [
+    "#6366f1", "#3b82f6", "#10b981", "#f59e0b",
+    "#ef4444", "#8b5cf6", "#ec4899", "#14b8a6",
+  ];
+
   const filteredUsers = useMemo(() => {
     const q = searchUser.trim().toLowerCase();
-    if (!q) return users;
-    return users.filter(
-      (u) => u.email.toLowerCase().includes(q) || u.name.toLowerCase().includes(q)
-    );
-  }, [users, searchUser]);
+    return users.filter((u) => {
+      const matchesSearch = !q || u.email.toLowerCase().includes(q) || u.name.toLowerCase().includes(q);
+      const matchesRole = !roleFilter ||
+        (roleFilter === "suspended" && u.is_suspended) ||
+        (roleFilter === "active" && !u.is_suspended);
+      const matchesDate = !dateFilter || u.created_at?.startsWith(dateFilter);
+      return matchesSearch && matchesRole && matchesDate;
+    });
+  }, [users, searchUser, roleFilter, dateFilter]);
 
   const navItems = [
     { key: "overview" as const, label: "전체 개요", icon: BarChart3 },
@@ -341,11 +438,10 @@ export function AdminDashboard() {
               key={item.key}
               type="button"
               onClick={() => setActiveTab(item.key)}
-              className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors ${
-                activeTab === item.key
-                  ? "bg-slate-900 font-medium text-white"
-                  : "text-slate-600 hover:bg-slate-100 hover:text-slate-800"
-              }`}
+              className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors ${activeTab === item.key
+                ? "bg-slate-900 font-medium text-white"
+                : "text-slate-600 hover:bg-slate-100 hover:text-slate-800"
+                }`}
             >
               <item.icon className="h-4 w-4 shrink-0" />
               <span className="flex-1 text-left">{item.label}</span>
@@ -439,26 +535,24 @@ export function AdminDashboard() {
                   <div className="mb-3 flex items-center justify-between">
                     <span className="text-xs text-slate-500">{stat.label}</span>
                     <div
-                      className={`flex h-8 w-8 items-center justify-center rounded-lg ${
-                        stat.color === "blue"
-                          ? "bg-blue-50"
-                          : stat.color === "green"
-                            ? "bg-green-50"
-                            : stat.color === "purple"
-                              ? "bg-purple-50"
-                              : "bg-red-50"
-                      }`}
+                      className={`flex h-8 w-8 items-center justify-center rounded-lg ${stat.color === "blue"
+                        ? "bg-blue-50"
+                        : stat.color === "green"
+                          ? "bg-green-50"
+                          : stat.color === "purple"
+                            ? "bg-purple-50"
+                            : "bg-red-50"
+                        }`}
                     >
                       <stat.icon
-                        className={`h-4 w-4 ${
-                          stat.color === "blue"
-                            ? "text-blue-600"
-                            : stat.color === "green"
-                              ? "text-green-600"
-                              : stat.color === "purple"
-                                ? "text-purple-600"
-                                : "text-red-600"
-                        }`}
+                        className={`h-4 w-4 ${stat.color === "blue"
+                          ? "text-blue-600"
+                          : stat.color === "green"
+                            ? "text-green-600"
+                            : stat.color === "purple"
+                              ? "text-purple-600"
+                              : "text-red-600"
+                          }`}
                       />
                     </div>
                   </div>
@@ -575,18 +669,17 @@ export function AdminDashboard() {
                         className="flex items-center gap-3 border-b border-slate-50 py-2 last:border-0"
                       >
                         <span className="w-24 shrink-0 text-xs text-slate-400">
-                          {format(new Date(a.at), "MM/dd HH:mm")}
+                          {format(addHours(new Date(a.at), 9), "MM/dd HH:mm")}
                         </span>
                         <span
-                          className={`h-1.5 w-1.5 shrink-0 rounded-full ${
-                            a.type === "signup"
-                              ? "bg-green-500"
-                              : a.type === "diagnosis"
-                                ? "bg-blue-500"
-                                : a.type === "opinion"
-                                  ? "bg-purple-500"
-                                  : "bg-red-500"
-                          }`}
+                          className={`h-1.5 w-1.5 shrink-0 rounded-full ${a.type === "signup"
+                            ? "bg-green-500"
+                            : a.type === "diagnosis"
+                              ? "bg-blue-500"
+                              : a.type === "opinion"
+                                ? "bg-purple-500"
+                                : "bg-red-500"
+                            }`}
                         />
                         <span className="flex-1 text-sm text-slate-700">{a.label}</span>
                         <span className="max-w-28 truncate text-xs text-slate-400">{a.ref}</span>
@@ -618,22 +711,76 @@ export function AdminDashboard() {
                   </ResponsiveContainer>
                 </div>
               </div>
+              {/* 질환별 분포 파이 차트 */}
+              {diseaseDistributionChart.length > 0 && (
+                <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                  <h3 className="mb-4 text-sm font-semibold text-slate-900">질환별 분포 (전체)</h3>
+                  <div className="h-72 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={diseaseDistributionChart}
+                          cx="50%"
+                          cy="50%"
+                          outerRadius={100}
+                          dataKey="value"
+                          label={({ name, percent }) =>
+                            `${name} ${(percent * 100).toFixed(0)}%`
+                          }
+                          labelLine={false}
+                        >
+                          {diseaseDistributionChart.map((_, index) => (
+                            <Cell
+                              key={`cell-${index}`}
+                              fill={PIE_COLORS[index % PIE_COLORS.length]}
+                            />
+                          ))}
+                        </Pie>
+                        <Tooltip formatter={(value) => `${value}건`} />
+                        <Legend />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
           {!loading && activeTab === "users" && (
             <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-              <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
                 <h2 className="text-sm font-bold text-slate-900">사용자 목록</h2>
-                <div className="relative">
-                  <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                <div className="flex flex-wrap items-center gap-2">
+                  {/* 상태 필터 */}
+                  <select
+                    className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs focus:border-blue-500 focus:outline-none"
+                    value={roleFilter}
+                    onChange={(e) => setRoleFilter(e.target.value)}
+                  >
+                    <option value="">전체 상태</option>
+                    <option value="active">활성</option>
+                    <option value="suspended">정지</option>
+                  </select>
+
+                  {/* 가입일 필터 */}
                   <input
-                    type="text"
-                    placeholder="이메일, 이름 검색…"
-                    className="rounded-lg border border-slate-300 py-1.5 pl-8 pr-3 text-xs focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    value={searchUser}
-                    onChange={(e) => setSearchUser(e.target.value)}
+                    type="month"
+                    className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs focus:border-blue-500 focus:outline-none"
+                    value={dateFilter}
+                    onChange={(e) => setDateFilter(e.target.value)}
                   />
+
+                  {/* 검색 */}
+                  <div className="relative">
+                    <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                    <input
+                      type="text"
+                      placeholder="이메일, 이름 검색…"
+                      className="rounded-lg border border-slate-300 py-1.5 pl-8 pr-3 text-xs focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      value={searchUser}
+                      onChange={(e) => setSearchUser(e.target.value)}
+                    />
+                  </div>
                 </div>
               </div>
               <div className="overflow-x-auto">
@@ -654,14 +801,13 @@ export function AdminDashboard() {
                         <td className="px-4 py-3">{u.email}</td>
                         <td className="px-4 py-3 font-medium">{u.name}</td>
                         <td className="px-4 py-3 text-xs text-slate-500">
-                          {u.created_at ? format(new Date(u.created_at), "yyyy-MM-dd") : "—"}
+                          {u.created_at ? format(addHours(new Date(u.created_at), 9), "yyyy-MM-dd") : "—"}
                         </td>
                         <td className="px-4 py-3 text-center">{u.diagnosis_count ?? 0}</td>
                         <td className="px-4 py-3">
                           <span
-                            className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${
-                              u.is_suspended ? "bg-red-100 text-red-700" : "bg-green-100 text-green-700"
-                            }`}
+                            className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${u.is_suspended ? "bg-red-100 text-red-700" : "bg-green-100 text-green-700"
+                              }`}
                           >
                             {u.is_suspended ? "정지" : "활성"}
                           </span>
@@ -734,11 +880,21 @@ export function AdminDashboard() {
                             <p>
                               {vet.hospital_name ?? "—"} · {vet.email}
                             </p>
-                            <p>신청일: {vet.created_at ? format(new Date(vet.created_at), "yyyy-MM-dd") : "—"}</p>
+                            <p>
+                              면허번호: {vet.license_number || "—"} · 신청일:{" "}
+                              {vet.created_at ? format(addHours(new Date(vet.created_at), 9), "yyyy-MM-dd") : "—"}
+                            </p>
                           </div>
                         </div>
                       </div>
-                      <div className="flex gap-2">
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          className="flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-50"
+                          onClick={() => openVetReview(vet.id)}
+                        >
+                          <EyeIcon className="h-3.5 w-3.5" /> 상세 / 자격증
+                        </button>
                         {pending ? (
                           <>
                             <button
@@ -753,13 +909,15 @@ export function AdminDashboard() {
                               type="button"
                               className="flex items-center gap-1.5 rounded-lg border border-red-300 px-3 py-1.5 text-xs font-semibold text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
                               disabled={actionId === vet.id}
-                              onClick={() => handleRejectVet(vet.id)}
+                              onClick={() => openVetReview(vet.id)}
                             >
                               <XCircle className="h-3.5 w-3.5" /> 거부
                             </button>
                           </>
                         ) : (
-                          <span className="text-xs text-slate-400">승인 처리 완료</span>
+                          <span className="self-center text-xs text-slate-400">
+                            처리 완료
+                          </span>
                         )}
                       </div>
                     </div>
@@ -794,15 +952,14 @@ export function AdminDashboard() {
                     <div>
                       <div className="mb-2 flex flex-wrap items-center gap-2">
                         <span
-                          className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
-                            report.status === "pending"
-                              ? "bg-orange-100 text-orange-700"
-                              : report.status === "processing"
-                                ? "bg-blue-100 text-blue-700"
-                                : report.status === "resolved"
-                                  ? "bg-green-100 text-green-700"
-                                  : "bg-slate-100 text-slate-600"
-                          }`}
+                          className={`rounded-full px-2 py-0.5 text-xs font-semibold ${report.status === "pending"
+                            ? "bg-orange-100 text-orange-700"
+                            : report.status === "processing"
+                              ? "bg-blue-100 text-blue-700"
+                              : report.status === "resolved"
+                                ? "bg-green-100 text-green-700"
+                                : "bg-slate-100 text-slate-600"
+                            }`}
                         >
                           {report.status === "pending"
                             ? "대기"
@@ -827,7 +984,7 @@ export function AdminDashboard() {
                           <span className="font-medium">사유:</span> {report.reason}
                         </p>
                         <p className="mt-1 text-xs text-slate-400">
-                          {format(new Date(report.created_at), "yyyy-MM-dd HH:mm")}
+                          {format(addHours(new Date(report.created_at), 9), "yyyy-MM-dd HH:mm")}
                         </p>
                       </div>
                     </div>
@@ -873,6 +1030,256 @@ export function AdminDashboard() {
           )}
         </div>
       </main>
+
+      {/* 수의사 상세 / 자격증 검토 모달 */}
+      {(reviewVet || reviewLoading) && (
+        <VetReviewModal
+          vet={reviewVet}
+          loading={reviewLoading}
+          actionId={actionId}
+          showRejectInput={showRejectInput}
+          rejectReason={rejectReason}
+          onClose={closeVetReview}
+          onApprove={submitApproveFromModal}
+          onStartReject={() => setShowRejectInput(true)}
+          onCancelReject={() => {
+            setShowRejectInput(false);
+            setRejectReason("");
+          }}
+          onChangeRejectReason={setRejectReason}
+          onSubmitReject={submitRejectFromModal}
+        />
+      )}
     </div>
+  );
+}
+
+// ==================== 수의사 검토 모달 ====================
+function VetReviewModal(props: {
+  vet: AdminVetDetail | null;
+  loading: boolean;
+  actionId: number | null;
+  showRejectInput: boolean;
+  rejectReason: string;
+  onClose: () => void;
+  onApprove: () => void;
+  onStartReject: () => void;
+  onCancelReject: () => void;
+  onChangeRejectReason: (v: string) => void;
+  onSubmitReject: () => void;
+}) {
+  const {
+    vet,
+    loading,
+    actionId,
+    showRejectInput,
+    rejectReason,
+    onClose,
+    onApprove,
+    onStartReject,
+    onCancelReject,
+    onChangeRejectReason,
+    onSubmitReject,
+  } = props;
+
+  const isProcessing = vet ? actionId === vet.id : false;
+  const pending = vet?.approval_status?.toLowerCase() === "pending";
+
+  const licenseUrl = buildFileUrl(vet?.license_image_url);
+  const employmentUrl = buildFileUrl(vet?.employment_doc_url);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="relative max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white p-6 shadow-xl">
+        <button
+          type="button"
+          aria-label="닫기"
+          onClick={onClose}
+          className="absolute right-4 top-4 rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+        >
+          <CloseIcon className="h-5 w-5" />
+        </button>
+
+        <h2 className="mb-1 text-lg font-bold text-slate-900">수의사 가입 신청 검토</h2>
+        <p className="mb-5 text-sm text-slate-500">
+          첨부된 면허증/증빙 서류를 확인한 뒤 승인 또는 반려해주세요.
+        </p>
+
+        {loading || !vet ? (
+          <div className="flex items-center justify-center py-16">
+            <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+          </div>
+        ) : (
+          <div className="space-y-5">
+            {/* 기본 정보 */}
+            <section className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <h3 className="mb-3 text-sm font-semibold text-slate-700">기본 정보</h3>
+              <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+                <Field label="이름" value={`${vet.name} 수의사`} />
+                <Field label="이메일" value={vet.email} />
+                <Field label="병원명" value={vet.hospital_name || "—"} />
+                <Field label="면허번호" value={vet.license_number || "—"} />
+                <Field
+                  label="신청일"
+                  value={
+                    vet.created_at ? format(addHours(new Date(vet.created_at), 9), "yyyy-MM-dd HH:mm") : "—"
+                  }
+                />
+                <Field
+                  label="상태"
+                  value={vetStatusLabel(vet.approval_status).text}
+                />
+              </dl>
+              {vet.rejection_reason && (
+                <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800">
+                  반려 사유: {vet.rejection_reason}
+                </p>
+              )}
+            </section>
+
+            {/* 면허증 */}
+            <section className="rounded-xl border border-slate-200 p-4">
+              <div className="mb-3 flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-slate-700">수의사 면허증 (필수)</h3>
+                {licenseUrl && (
+                  <a
+                    href={licenseUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                  >
+                    <FileText className="h-3.5 w-3.5" /> 새 창에서 열기
+                  </a>
+                )}
+              </div>
+              <DocPreview url={licenseUrl} label="면허증" />
+            </section>
+
+            {/* 재직증명서 */}
+            <section className="rounded-xl border border-slate-200 p-4">
+              <div className="mb-3 flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-slate-700">
+                  재직 / 개업 증명서 (선택)
+                </h3>
+                {employmentUrl && (
+                  <a
+                    href={employmentUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                  >
+                    <FileText className="h-3.5 w-3.5" /> 새 창에서 열기
+                  </a>
+                )}
+              </div>
+              <DocPreview url={employmentUrl} label="재직증명서" />
+            </section>
+
+            {/* 액션 영역 */}
+            {pending && (
+              <section className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                {showRejectInput ? (
+                  <div className="space-y-3">
+                    <label className="block text-sm font-semibold text-slate-700">
+                      반려 사유
+                    </label>
+                    <textarea
+                      value={rejectReason}
+                      onChange={(e) => onChangeRejectReason(e.target.value)}
+                      rows={4}
+                      maxLength={2000}
+                      placeholder="예) 면허증 사본이 흐릿하여 면허번호 식별이 어렵습니다. 선명한 사본을 다시 첨부하여 재신청해 주세요."
+                      className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
+                    />
+                    <div className="flex justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={onCancelReject}
+                        className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
+                      >
+                        취소
+                      </button>
+                      <button
+                        type="button"
+                        disabled={isProcessing || !rejectReason.trim()}
+                        onClick={onSubmitReject}
+                        className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+                      >
+                        반려 확정
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <p className="text-xs text-slate-500">
+                      검토 후 아래 버튼으로 처리해주세요.
+                    </p>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={onStartReject}
+                        disabled={isProcessing}
+                        className="flex items-center gap-1.5 rounded-lg border border-red-300 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 disabled:opacity-50"
+                      >
+                        <XCircle className="h-4 w-4" /> 반려 (사유 입력)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={onApprove}
+                        disabled={isProcessing}
+                        className="flex items-center gap-1.5 rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700 disabled:opacity-50"
+                      >
+                        <CheckCircle className="h-4 w-4" /> 승인
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </section>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function Field({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0">
+      <dt className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+        {label}
+      </dt>
+      <dd className="mt-0.5 truncate text-sm text-slate-900">{value}</dd>
+    </div>
+  );
+}
+
+function DocPreview({ url, label }: { url: string | null; label: string }) {
+  if (!url) {
+    return (
+      <div className="flex h-40 items-center justify-center rounded-lg border-2 border-dashed border-slate-200 text-sm text-slate-400">
+        첨부된 {label}이 없습니다
+      </div>
+    );
+  }
+  if (isPdfPath(url)) {
+    return (
+      <div className="space-y-2">
+        <object data={url} type="application/pdf" className="h-96 w-full rounded-lg border border-slate-200">
+          <p className="p-4 text-sm text-slate-500">
+            PDF 미리보기를 지원하지 않는 브라우저입니다. 위의 "새 창에서 열기"로 확인해주세요.
+          </p>
+        </object>
+      </div>
+    );
+  }
+  return (
+    <a href={url} target="_blank" rel="noreferrer" className="block">
+      <img
+        src={url}
+        alt={label}
+        className="max-h-[480px] w-full rounded-lg border border-slate-200 object-contain"
+      />
+    </a>
   );
 }

@@ -15,11 +15,16 @@ export const deleteAdminUser = (userId) =>
 export const getAdminVets = (params = {}) =>
   apiClient.get('/admin/vets', { params }).then((r) => r.data);
 
+// 수의사 상세 조회 (자격증/증빙서류 URL 포함)
+export const getAdminVetDetail = (vetId) =>
+  apiClient.get(`/admin/vets/${vetId}`).then((r) => r.data);
+
 export const approveAdminVet = (vetId) =>
   apiClient.patch(`/admin/vets/${vetId}/approve`).then((r) => r.data);
 
-export const rejectAdminVet = (vetId) =>
-  apiClient.patch(`/admin/vets/${vetId}/reject`).then((r) => r.data);
+// reason: 반려 사유 (필수)
+export const rejectAdminVet = (vetId, reason) =>
+  apiClient.patch(`/admin/vets/${vetId}/reject`, { reason }).then((r) => r.data);
 
 export const getAdminReports = (params = {}) =>
   apiClient.get('/admin/reports', { params }).then((r) => r.data);

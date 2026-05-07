@@ -2,9 +2,6 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { Eye, Mail, Lock, User, Phone } from 'lucide-react';
 import useAuthStore from '../../stores/authStore';
-import { WireframeBox } from '../../components/WireframeBox';
-import { WireframeButton } from '../../components/WireframeButton';
-import { InputCore } from '../../components/ui/input-core';
 
 export default function Register() {
   const navigate = useNavigate();
@@ -49,76 +46,79 @@ export default function Register() {
     }
   };
 
-  const field = (name, label, type, placeholder, Icon, errKey) => (
-    <div key={name}>
-      <label className="mb-2 block font-mono text-sm font-bold text-foreground">{label}</label>
-      <div className="relative">
-        <Icon className="absolute left-3 top-1/2 size-5 -translate-y-1/2 text-muted-foreground" />
-        <InputCore
-          name={name}
-          type={type}
-          value={formData[name]}
-          onChange={handleChange}
-          placeholder={placeholder}
-          className="border-2 py-3 pl-10 font-mono text-sm"
-          required
-        />
-      </div>
-      {errors[errKey || name] && (
-        <p className="mt-1 font-mono text-xs text-destructive">{errors[errKey || name]}</p>
-      )}
-    </div>
-  );
+  const fields = [
+    { name: 'email', label: '이메일', type: 'email', placeholder: 'email@example.com', Icon: Mail },
+    { name: 'password', label: '비밀번호', type: 'password', placeholder: '8자 이상', Icon: Lock },
+    { name: 'passwordConfirm', label: '비밀번호 확인', type: 'password', placeholder: '비밀번호 재입력', Icon: Lock },
+    { name: 'name', label: '이름', type: 'text', placeholder: '홍길동', Icon: User },
+    { name: 'phone', label: '전화번호', type: 'tel', placeholder: '01012345678', Icon: Phone },
+  ];
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-100 via-blue-50/80 to-indigo-100/90 p-4 py-12">
       <div className="w-full max-w-[440px]">
+        {/* 로고 */}
         <div className="mb-10 text-center">
           <Link to="/" className="inline-block">
             <div className="mb-4 flex items-center justify-center gap-3">
-              <div className="flex size-14 items-center justify-center rounded-2xl bg-white shadow-md shadow-blue-500/10 ring-1 ring-slate-200/80">
-                <Eye className="size-8 text-brand-link" strokeWidth={1.75} />
+              <div className="flex size-14 items-center justify-center rounded-2xl bg-white shadow-md ring-1 ring-slate-200/80">
+                <Eye className="size-8 text-blue-600" strokeWidth={1.75} />
               </div>
-              <h1 className="font-display text-3xl font-bold tracking-tight text-slate-900">PET EYE AI</h1>
+              <h1 className="text-3xl font-bold tracking-tight text-slate-900">PET EYE AI</h1>
             </div>
           </Link>
-          <p className="text-[15px] text-slate-600">보호자 회원가입</p>
+          <p className="text-sm text-slate-500">보호자 회원가입</p>
         </div>
 
-        <WireframeBox label="회원가입" className="shadow-float">
+        {/* 회원가입 카드 */}
+        <div className="bg-white border border-slate-200 rounded-2xl p-8 shadow-sm">
           {error && (
-            <div className="mb-4 rounded border-2 border-destructive/40 bg-destructive/10 p-3 font-mono text-sm text-destructive">
+            <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">
               {error}
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {field('email', '이메일', 'email', 'email@example.com', Mail)}
-            {field('password', '비밀번호', 'password', '8자 이상', Lock)}
-            {field('passwordConfirm', '비밀번호 확인', 'password', '비밀번호 재입력', Lock)}
-            {field('name', '이름', 'text', '홍길동', User)}
-            {field('phone', '전화번호', 'tel', '01012345678', Phone)}
+            {fields.map(({ name, label, type, placeholder, Icon }) => (
+              <div key={name}>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">{label}</label>
+                <div className="relative">
+                  <Icon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input
+                    name={name}
+                    type={type}
+                    value={formData[name]}
+                    onChange={handleChange}
+                    placeholder={placeholder}
+                    className="w-full pl-10 pr-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    required
+                  />
+                </div>
+                {errors[name] && (
+                  <p className="mt-1 text-xs text-red-500">{errors[name]}</p>
+                )}
+              </div>
+            ))}
 
-            <WireframeButton
-              variant="primary"
+            <button
               type="submit"
-              className="w-full py-3 text-base disabled:opacity-50"
+              className="w-full py-3 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 disabled:opacity-50"
               disabled={isLoading}
             >
               {isLoading ? '처리 중...' : '회원가입'}
-            </WireframeButton>
+            </button>
           </form>
 
           <div className="mt-6 text-center text-sm">
-            <span className="text-muted-foreground">이미 계정이 있으신가요? </span>
-            <Link to="/login" className="font-bold text-brand-link hover:underline">
+            <span className="text-slate-500">이미 계정이 있으신가요? </span>
+            <Link to="/login" className="font-bold text-blue-600 hover:underline">
               로그인
             </Link>
           </div>
-        </WireframeBox>
+        </div>
 
         <div className="mt-6 text-center">
-          <Link to="/" className="text-sm text-muted-foreground hover:text-foreground">
+          <Link to="/" className="text-sm text-slate-400 hover:text-slate-900">
             ← 메인으로 돌아가기
           </Link>
         </div>

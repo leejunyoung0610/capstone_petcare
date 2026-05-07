@@ -2,10 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { Eye, Mail, Lock } from 'lucide-react';
 import useAuthStore from '../../stores/authStore';
-import { WireframeBox } from '../../components/WireframeBox';
-import { WireframeButton } from '../../components/WireframeButton';
-import { InputCore } from '../../components/ui/input-core';
-import { cn } from '../../lib/utils';
+import { apiBaseURL } from '../../api/client';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -22,8 +19,8 @@ export default function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (userType === 'vet') {
-     const ok = await vetLogin(formData.email, formData.password);
-     if (ok) navigate('/vet/dashboard');
+      const ok = await vetLogin(formData.email, formData.password);
+      if (ok) navigate('/vet/dashboard');
       return;
     }
     if (userType === 'admin') {
@@ -32,9 +29,7 @@ export default function Login() {
         const role = useAuthStore.getState().user?.role;
         if (role !== 'admin') {
           logout();
-          window.alert(
-            '관리자 권한이 없는 계정입니다. backend/scripts/create_admin_user.py 로 관리자를 만든 뒤 로그인하세요.'
-          );
+          window.alert('관리자 권한이 없는 계정입니다.');
         } else navigate('/admin/dashboard');
       }
       return;
@@ -47,130 +42,147 @@ export default function Login() {
     }
   };
 
-  const tab = (id, label) => (
-    <button
-      type="button"
-      key={id}
-      onClick={() => setUserType(id)}
-      className={cn(
-        'flex-1 border-2 px-4 py-2 font-mono text-sm font-semibold transition-colors',
-        userType === id
-          ? 'border-brand-link bg-blue-50 text-blue-800'
-          : 'border-border bg-card text-muted-foreground hover:bg-muted'
-      )}
-    >
-      {label}
-    </button>
-  );
+  const userTypes = [
+    { id: 'user', label: '보호자' },
+    { id: 'vet', label: '수의사' },
+    { id: 'admin', label: '관리자' },
+  ];
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-100 via-blue-50/80 to-indigo-100/90 p-4 py-12">
       <div className="w-full max-w-[440px]">
+        {/* 로고 */}
         <div className="mb-10 text-center">
           <Link to="/" className="inline-block">
             <div className="mb-4 flex items-center justify-center gap-3">
-              <div className="flex size-14 items-center justify-center rounded-2xl bg-white shadow-md shadow-blue-500/10 ring-1 ring-slate-200/80">
-                <Eye className="size-8 text-brand-link" strokeWidth={1.75} />
+              <div className="flex size-14 items-center justify-center rounded-2xl bg-white shadow-md ring-1 ring-slate-200/80">
+                <Eye className="size-8 text-blue-600" strokeWidth={1.75} />
               </div>
-              <h1 className="font-display text-3xl font-bold tracking-tight text-slate-900">PET EYE AI</h1>
+              <h1 className="text-3xl font-bold tracking-tight text-slate-900">PET EYE AI</h1>
             </div>
           </Link>
-          <p className="text-[15px] leading-relaxed text-slate-600">반려동물 안구 건강 · AI 사전 스크리닝</p>
+          <p className="text-sm text-slate-500">반려동물 안구 건강 · AI 사전 스크리닝</p>
         </div>
 
-        <WireframeBox label="로그인" className="shadow-float">
-          <div className="mb-6 flex gap-2">
-            {tab('user', '보호자')}
-            {tab('vet', '수의사')}
-            {tab('admin', '관리자')}
+        {/* 로그인 카드 */}
+        <div className="bg-white border border-slate-200 rounded-2xl p-8 shadow-sm">
+          {/* 탭 */}
+          <div className="flex gap-1 bg-slate-100 p-1 rounded-xl mb-6">
+            {userTypes.map((type) => (
+              <button
+                key={type.id}
+                type="button"
+                onClick={() => setUserType(type.id)}
+                className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  userType === type.id
+                    ? 'bg-white text-slate-900 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                {type.label}
+              </button>
+            ))}
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
+            {/* 이메일 */}
             <div>
-              <label className="mb-2 block font-mono text-sm font-bold text-foreground">이메일</label>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">이메일</label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 size-5 -translate-y-1/2 text-muted-foreground" />
-                <InputCore
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input
                   name="email"
                   type="email"
                   value={formData.email}
                   onChange={handleChange}
                   placeholder="이메일을 입력하세요"
-                  className="border-2 py-3 pl-10 font-mono text-sm"
+                  className="w-full pl-10 pr-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   required
                 />
               </div>
             </div>
 
+            {/* 비밀번호 */}
             <div>
-              <label className="mb-2 block font-mono text-sm font-bold text-foreground">비밀번호</label>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">비밀번호</label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 size-5 -translate-y-1/2 text-muted-foreground" />
-                <InputCore
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input
                   name="password"
                   type="password"
                   value={formData.password}
                   onChange={handleChange}
                   placeholder="비밀번호를 입력하세요"
-                  className="border-2 py-3 pl-10 font-mono text-sm"
+                  className="w-full pl-10 pr-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   required
                 />
               </div>
             </div>
 
+            {/* 에러 */}
             {error && (
-              <div className="rounded border-2 border-destructive/40 bg-destructive/10 p-3 font-mono text-sm text-destructive">
+              <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">
                 {error}
               </div>
             )}
 
+            {/* 로그인 상태 유지 */}
             <div className="flex items-center justify-between text-sm">
-              <label className="flex cursor-pointer items-center gap-2">
-                <input type="checkbox" className="rounded border-2" />
+              <label className="flex items-center gap-2 cursor-pointer text-slate-600">
+                <input type="checkbox" className="rounded" />
                 <span>로그인 상태 유지</span>
               </label>
-              <span className="cursor-not-allowed text-brand-link opacity-60">비밀번호 찾기</span>
+              <span className="cursor-not-allowed text-slate-400">비밀번호 찾기</span>
             </div>
 
-            <WireframeButton
-              variant="primary"
+            {/* 로그인 버튼 */}
+            <button
               type="submit"
-              className="flex w-full items-center justify-center py-3 text-base disabled:opacity-50"
+              className="w-full py-3 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 disabled:opacity-50"
               disabled={isLoading}
             >
               {isLoading ? '로그인 중...' : '로그인'}
-            </WireframeButton>
+            </button>
           </form>
 
+          {/* 구분선 */}
           <div className="my-6 flex items-center gap-3">
-            <div className="h-0.5 flex-1 bg-border" />
-            <span className="text-sm text-muted-foreground">또는</span>
-            <div className="h-0.5 flex-1 bg-border" />
+            <div className="h-px flex-1 bg-slate-200" />
+            <span className="text-xs text-slate-400">또는</span>
+            <div className="h-px flex-1 bg-slate-200" />
           </div>
 
+          {/* 카카오 로그인 */}
           {userType === 'user' && (
-            <div className="space-y-3">
-              <button
-                type="button"
-                className="flex w-full items-center justify-center gap-2 border-2 border-amber-400 bg-amber-300 py-3 font-mono text-sm font-bold text-amber-950 hover:bg-amber-200"
-                onClick={() => window.alert('카카오 로그인은 준비 중입니다.')}
-              >
-                <span className="size-5 rounded bg-zinc-800" aria-hidden />
-                카카오 로그인
-              </button>
-            </div>
+            <button
+              type="button"
+              className="w-full flex items-center justify-center gap-2 py-3 bg-yellow-400 rounded-xl text-sm font-semibold text-yellow-900 hover:bg-yellow-500"
+              onClick={() => {
+                window.location.href = `${apiBaseURL}/auth/kakao`;
+              }}
+            >
+              <span className="w-5 h-5 rounded bg-zinc-800" />
+              카카오 로그인
+            </button>
           )}
 
+          {/* 회원가입 링크 */}
           <div className="mt-6 text-center text-sm">
-            <span className="text-muted-foreground">계정이 없으신가요? </span>
-            <Link to="/register" className="font-bold text-brand-link hover:underline">
-              {userType === 'user' ? '회원가입' : userType === 'vet' ? '수의사 등록' : ''}
-            </Link>
+            <span className="text-slate-500">계정이 없으신가요? </span>
+            {userType === 'user' && (
+              <Link to="/register" className="font-bold text-blue-600 hover:underline">회원가입</Link>
+            )}
+            {userType === 'vet' && (
+              <Link to="/vet/register" className="font-bold text-blue-600 hover:underline">수의사 등록</Link>
+            )}
+            {userType === 'admin' && (
+              <span className="text-slate-400">관리자 계정은 별도로 발급됩니다.</span>
+            )}
           </div>
-        </WireframeBox>
+        </div>
 
         <div className="mt-6 text-center">
-          <Link to="/" className="text-sm text-muted-foreground hover:text-foreground">
+          <Link to="/" className="text-sm text-slate-400 hover:text-slate-900">
             ← 메인으로 돌아가기
           </Link>
         </div>

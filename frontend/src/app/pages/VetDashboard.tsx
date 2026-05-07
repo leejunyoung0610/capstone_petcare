@@ -158,9 +158,8 @@ export function VetDashboard() {
   return (
     <div className="flex min-h-screen bg-slate-100">
       <aside
-        className={`${
-          sidebarCollapsed ? "w-16" : "w-60"
-        } sticky top-0 flex h-screen shrink-0 flex-col border-r border-slate-200 bg-white transition-all duration-200`}
+        className={`${sidebarCollapsed ? "w-16" : "w-60"
+          } sticky top-0 flex h-screen shrink-0 flex-col border-r border-slate-200 bg-white transition-all duration-200`}
       >
         <div className="flex h-14 items-center gap-2 border-b border-slate-200 px-3">
           <button
@@ -204,11 +203,10 @@ export function VetDashboard() {
               key={item.key}
               type="button"
               onClick={() => setActiveTab(item.key)}
-              className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors ${
-                activeTab === item.key
-                  ? "bg-blue-50 font-medium text-blue-700"
-                  : "text-slate-600 hover:bg-slate-100 hover:text-slate-800"
-              }`}
+              className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors ${activeTab === item.key
+                ? "bg-blue-50 font-medium text-blue-700"
+                : "text-slate-600 hover:bg-slate-100 hover:text-slate-800"
+                }`}
             >
               <item.icon className="h-4 w-4 shrink-0" />
               {!sidebarCollapsed && (
@@ -320,26 +318,24 @@ export function VetDashboard() {
                   <div className="mb-3 flex items-center justify-between">
                     <span className="text-xs text-slate-500">{stat.label}</span>
                     <div
-                      className={`flex h-8 w-8 items-center justify-center rounded-lg ${
-                        stat.color === "blue"
-                          ? "bg-blue-50"
-                          : stat.color === "green"
-                            ? "bg-green-50"
-                            : stat.color === "amber"
-                              ? "bg-amber-50"
-                              : "bg-purple-50"
-                      }`}
+                      className={`flex h-8 w-8 items-center justify-center rounded-lg ${stat.color === "blue"
+                        ? "bg-blue-50"
+                        : stat.color === "green"
+                          ? "bg-green-50"
+                          : stat.color === "amber"
+                            ? "bg-amber-50"
+                            : "bg-purple-50"
+                        }`}
                     >
                       <stat.icon
-                        className={`h-4 w-4 ${
-                          stat.color === "blue"
-                            ? "text-blue-600"
-                            : stat.color === "green"
-                              ? "text-green-600"
-                              : stat.color === "amber"
-                                ? "text-amber-500"
-                                : "text-purple-600"
-                        }`}
+                        className={`h-4 w-4 ${stat.color === "blue"
+                          ? "text-blue-600"
+                          : stat.color === "green"
+                            ? "text-green-600"
+                            : stat.color === "amber"
+                              ? "text-amber-500"
+                              : "text-purple-600"
+                          }`}
                       />
                     </div>
                   </div>
@@ -391,11 +387,7 @@ export function VetDashboard() {
                           <button
                             type="button"
                             className="rounded-lg border border-blue-300 bg-white px-3 py-1.5 text-xs font-medium text-blue-600 hover:bg-blue-50"
-                            onClick={() =>
-                              window.alert(
-                                "AI 진단 상세는 보호자용 /result 화면과 동일 데이터입니다. 수의사 토큰으로는 추후 GET /diagnosis 전용 경로를 두면 바로 열 수 있습니다."
-                              )
-                            }
+                            onClick={() => navigate(`/vet/diagnosis/${req.diagnosis_id}?requestId=${req.id}`)}
                           >
                             AI 결과 보기
                           </button>
@@ -449,8 +441,8 @@ export function VetDashboard() {
                       <div className="flex justify-end gap-0.5">
                         {c.owner_rating
                           ? Array.from({ length: c.owner_rating }).map((_, i) => (
-                              <Star key={i} className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
-                            ))
+                            <Star key={i} className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+                          ))
                           : null}
                       </div>
                       <p className="mt-1 text-sm font-bold text-slate-800">
@@ -462,9 +454,8 @@ export function VetDashboard() {
                     <p className="mb-1.5 text-xs font-semibold text-green-800">작성한 소견</p>
                     <p className="text-sm leading-relaxed text-slate-700">{c.content}</p>
                     <span
-                      className={`mt-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${
-                        c.visit_required ? "bg-red-100 text-red-700" : "bg-blue-100 text-blue-700"
-                      }`}
+                      className={`mt-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${c.visit_required ? "bg-red-100 text-red-700" : "bg-blue-100 text-blue-700"
+                        }`}
                     >
                       {c.visit_required ? "병원 방문 필요" : "경과 관찰"}
                     </span>
@@ -475,6 +466,14 @@ export function VetDashboard() {
                       <p className="text-sm text-slate-700">{c.owner_review}</p>
                     </div>
                   )}
+                  <div className="mt-3 flex justify-end">
+                    <Link
+                      to={`/vet/opinions/${c.id}/write?edit=true&content=${encodeURIComponent(c.content ?? "")}&recommendation=${encodeURIComponent(c.recommendation ?? "")}&visit_required=${c.visit_required}&service_fee=${c.service_fee ?? ""}`}
+                      className="text-xs font-medium text-blue-600 hover:text-blue-800"
+                    >
+                      소견 수정
+                    </Link>
+                  </div>
                 </div>
               ))}
               {completed.length === 0 && (
@@ -575,6 +574,7 @@ function formatDateTime(iso?: string | null) {
   if (!iso) return "—";
   try {
     const d = new Date(iso);
+    d.setHours(d.getHours() + 9);
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
   } catch {
     return iso;

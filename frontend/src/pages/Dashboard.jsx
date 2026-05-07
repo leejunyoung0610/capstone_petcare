@@ -1,103 +1,100 @@
 import { Link } from 'react-router';
 import { Upload, Sparkles } from 'lucide-react';
 import useAuthStore from '../stores/authStore';
-import { WireframeBox } from '../components/WireframeBox';
-import { WireframeButton } from '../components/WireframeButton';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
-import { SectionHeader } from '../components/ui/SectionHeader';
 
 export default function Dashboard() {
   const { user } = useAuthStore();
 
   return (
-    <main className="mx-auto max-w-5xl px-4 py-10 sm:px-6 md:py-14 lg:px-8">
-      <WireframeBox label="대시보드" className="mb-12 shadow-float">
-        <p className="font-mono text-[11px] font-bold uppercase tracking-[0.2em] text-brand-link/90">
+    <main className="mx-auto max-w-5xl px-4 py-5 sm:px-6 sm:py-10 md:py-14 lg:px-8">
+      {/* 환영 카드 — 모바일에선 패딩/타이포 압축 */}
+      <section className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 shadow-sm mb-6 sm:mb-10">
+        <p className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-blue-600 mb-1">
           Signed in
         </p>
-        <h1 className="font-display mt-2 text-3xl font-bold tracking-tight text-slate-900 md:text-4xl">
+        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-slate-900 mb-1">
           안녕하세요{user?.name ? `, ${user.name}님` : ''} 👋
         </h1>
-        <p className="mt-3 max-w-xl text-[15px] leading-relaxed text-slate-600">
-          반려동물 프로필을 등록한 뒤 안구 사진을 업로드하면 AI 스크리닝 결과와 PDF 보고서를 받을 수
-          있습니다.
-        </p>
-        <p className="mt-2 text-sm text-slate-500">
-          <Link to="/" className="font-medium text-brand-link hover:underline">
-            서비스 소개·메인 페이지
+        <p className="text-sm text-slate-500 leading-relaxed mb-4">
+          눈 사진을 업로드하면 AI 스크리닝 결과와 PDF 보고서를 받을 수 있어요.
+          <Link to="/" className="ml-1 font-medium text-blue-600 hover:underline">
+            메인 페이지
           </Link>
-          로 이동할 수 있어요.
+          .
         </p>
-        <div className="mt-6 flex flex-wrap gap-3">
-          <WireframeButton variant="primary" asChild>
-            <Link to="/pets">내 반려동물</Link>
-          </WireframeButton>
-          <WireframeButton variant="outline" asChild>
-            <Link to="/pets/new">반려동물 등록</Link>
-          </WireframeButton>
-          <WireframeButton variant="secondary" asChild className="gap-2">
-            <Link to="/diagnosis/new" className="inline-flex items-center">
-              <Upload className="size-4" />
+        <div className="flex flex-wrap gap-2">
+          <Link to="/pets" className="inline-flex">
+            <button className="px-3.5 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">
+              내 반려동물
+            </button>
+          </Link>
+          <Link to="/pets/new" className="inline-flex">
+            <button className="px-3.5 py-2 border border-slate-300 bg-white rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50">
+              반려동물 등록
+            </button>
+          </Link>
+          <Link to="/diagnosis/new" className="inline-flex">
+            <button className="flex items-center gap-1.5 px-3.5 py-2 border border-slate-300 bg-white rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50">
+              <Upload className="w-4 h-4" />
               AI 분석
-            </Link>
-          </WireframeButton>
+            </button>
+          </Link>
         </div>
-      </WireframeBox>
+      </section>
 
-      <SectionHeader
-        align="left"
-        className="!mb-8 max-w-none"
-        kicker="Quick start"
-        title="다음 단계"
-        subtitle="처음이시라면 순서대로 진행해 보세요."
-      />
+      {/* 다음 단계 */}
+      <div className="mb-3 sm:mb-6">
+        <p className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-blue-600 mb-0.5">
+          Quick start
+        </p>
+        <h2 className="text-lg sm:text-xl font-bold text-slate-900 mb-0.5">다음 단계</h2>
+        <p className="text-xs sm:text-sm text-slate-500">처음이시라면 순서대로 진행해 보세요.</p>
+      </div>
 
-      <div className="grid gap-6 md:grid-cols-3">
-        <Card className="border-slate-200/90 shadow-md shadow-slate-900/[0.04] transition hover:shadow-lg">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 font-mono text-base">
-              <span className="text-xl">📝</span> 1. 반려동물 등록
-            </CardTitle>
-            <CardDescription>이름, 종, 품종 등 기본 정보를 입력합니다.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <WireframeButton variant="outline" asChild className="w-full">
-              <Link to="/pets/new" className="inline-flex w-full justify-center">
-                등록하기 →
-              </Link>
-            </WireframeButton>
-          </CardContent>
-        </Card>
-        <Card className="border-slate-200/90 shadow-md shadow-slate-900/[0.04] transition hover:shadow-lg">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 font-mono text-base">
-              <span className="text-xl">📸</span> 2. 안구 사진
-            </CardTitle>
-            <CardDescription>밝은 곳에서 눈이 잘 보이게 촬영해 주세요.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <WireframeButton variant="outline" asChild className="w-full">
-              <Link to="/diagnosis/new" className="inline-flex w-full justify-center">
-                분석하기 →
-              </Link>
-            </WireframeButton>
-          </CardContent>
-        </Card>
-        <Card className="border-slate-200/90 shadow-md shadow-slate-900/[0.04] transition hover:shadow-lg">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 font-mono text-base">
-              <Sparkles className="size-5 text-brand-link" /> 3. 결과 · PDF
-            </CardTitle>
-            <CardDescription>결과 페이지에서 보고서를 내려받을 수 있습니다.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <WireframeButton variant="outline" asChild className="w-full">
-              <Link to="/pets" className="inline-flex w-full justify-center">
-                반려동물 목록 →
-              </Link>
-            </WireframeButton>
-          </CardContent>
-        </Card>
+      <div className="grid gap-3 sm:gap-4 md:grid-cols-3">
+        {[
+          {
+            icon: '📝',
+            title: '1. 반려동물 등록',
+            desc: '이름, 종, 품종 등 기본 정보를 입력합니다.',
+            link: '/pets/new',
+            label: '등록하기 →',
+          },
+          {
+            icon: '📸',
+            title: '2. 안구 사진',
+            desc: '밝은 곳에서 눈이 잘 보이게 촬영해 주세요.',
+            link: '/diagnosis/new',
+            label: '분석하기 →',
+          },
+          {
+            icon: null,
+            title: '3. 결과 · PDF',
+            desc: '결과 페이지에서 보고서를 내려받을 수 있어요.',
+            link: '/pets',
+            label: '반려동물 목록 →',
+          },
+        ].map((item) => (
+          <div
+            key={item.title}
+            className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-sm hover:shadow-md transition"
+          >
+            <div className="flex items-center gap-2 mb-1.5">
+              {item.icon ? (
+                <span className="text-lg">{item.icon}</span>
+              ) : (
+                <Sparkles className="w-5 h-5 text-blue-600" />
+              )}
+              <h3 className="font-bold text-slate-900 text-sm">{item.title}</h3>
+            </div>
+            <p className="text-sm text-slate-500 mb-3 leading-relaxed">{item.desc}</p>
+            <Link to={item.link}>
+              <button className="w-full py-2 border border-slate-300 rounded-lg text-sm text-slate-600 hover:bg-slate-50">
+                {item.label}
+              </button>
+            </Link>
+          </div>
+        ))}
       </div>
     </main>
   );
