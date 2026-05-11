@@ -418,6 +418,7 @@ def create_dataloader(
     aug_preset: str = "default",
     sampler_boost_disease: Optional[str] = None,
     sampler_boost_factor: float = 2.0,
+    pin_memory: Optional[bool] = None,
 ) -> DataLoader:
     """
     DataLoader 생성
@@ -433,6 +434,7 @@ def create_dataloader(
         aug_preset: get_transforms 에 전달 ("default" | "cat_phone")
         sampler_boost_disease: 샘플러 사용 시 소수 클래스 추가 부스트 질환명 (예: 결막염)
         sampler_boost_factor: 소수 클래스 샘플 가중 배율
+        pin_memory: None 이면 False (MPS 경고 방지). CUDA 학습 시 True 권장.
     
     Returns:
         DataLoader
@@ -467,13 +469,15 @@ def create_dataloader(
                 f"  · 소수 클래스 부스트: 질환={sampler_boost_disease}, 배율={sampler_boost_factor}"
             )
 
+    use_pin = pin_memory if pin_memory is not None else False
+
     dataloader = DataLoader(
         dataset,
         batch_size=batch_size,
         shuffle=shuffle,
         sampler=sampler,
         num_workers=num_workers,
-        pin_memory=True,
+        pin_memory=use_pin,
         drop_last=is_training,
     )
 

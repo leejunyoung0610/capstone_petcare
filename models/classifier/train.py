@@ -5,6 +5,9 @@ EfficientNet-B3 멀티태스크 질환 분류 모델 학습 스크립트
   source venv/bin/activate
   python3 models/classifier/train.py
 
+맥북 발열 완화 (GPU 끄고 CPU 학습, 매우 느림):
+  FORCE_CPU_TRAINING=1 python3 models/classifier/train.py
+
 ※ 스크립트 경로로 실행 시에도 동작하도록 저장소 루트를 sys.path 에 넣습니다.
 """
 
@@ -86,17 +89,22 @@ class Config:
     WANDB_PROJECT = "eye-disease-classification"
 
 
-def get_device():
-    """디바이스 확인 및 출력"""
+def get_device() -> str:
+    """디바이스 선택.
+
+    발열 완화: FORCE_CPU_TRAINING=1 이면 MPS/CUDA 를 쓰지 않고 CPU 만 사용 (느리지만 GPU 발열 없음).
+    """
+    if os.environ.get("FORCE_CPU_TRAINING", "").strip() in ("1", "true", "yes"):
+        print("⚠ CPU 학습 모드 (FORCE_CPU_TRAINING=1) — GPU 미사용, 발열·속도 트레이드오프")
+        return "cpu"
     if torch.backends.mps.is_available():
         print("✓ MPS (Apple Silicon GPU) 사용")
         return "mps"
-    elif torch.cuda.is_available():
+    if torch.cuda.is_available():
         print("✓ CUDA (NVIDIA GPU) 사용")
         return "cuda"
-    else:
-        print("⚠ CPU 사용 (학습이 느릴 수 있습니다)")
-        return "cpu"
+    print("⚠ CPU 사용 (학습이 느릴 수 있습니다)")
+    return "cpu"
 
 
 def train_epoch(
@@ -280,6 +288,8 @@ def train():
     print(f"  - Train: {train_paths}")
     print(f"  - Val:   {val_paths}")
 
+    pin_mem = device == "cuda"
+
     print(f"\n📊 데이터 로딩...")
     train_loader = create_dataloader(
         data_paths=train_paths,
@@ -292,6 +302,7 @@ def train():
         aug_preset=aug_preset,
         sampler_boost_disease=boost_dis,
         sampler_boost_factor=config.SAMPLER_BOOST_FACTOR,
+        pin_memory=pin_mem,
     )
 
     val_loader = create_dataloader(
@@ -303,6 +314,7 @@ def train():
         num_workers=0,
         use_sampler=False,
         aug_preset="default",
+        pin_memory=pin_mem,
     )
 
     print(f"\n🔧 모델 생성...")
