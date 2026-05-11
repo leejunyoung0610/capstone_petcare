@@ -1,6 +1,19 @@
 """
 EfficientNet-B3 멀티태스크 질환 분류 모델 학습 스크립트
+
+실행 (프로젝트 루트에서):
+  source venv/bin/activate
+  python3 models/classifier/train.py
+
+※ 스크립트 경로로 실행 시에도 동작하도록 저장소 루트를 sys.path 에 넣습니다.
 """
+
+import sys
+from pathlib import Path
+
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
 
 import os
 import torch
@@ -10,7 +23,6 @@ from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 import wandb
-from pathlib import Path
 from typing import Dict
 import json
 
