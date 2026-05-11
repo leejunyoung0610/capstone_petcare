@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router';
 import usePetStore from '../../stores/petStore';
 import useAuthStore from '../../stores/authStore';
 import { ButtonCore } from '../../components/ui/button-core';
+const BASE_URL = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:8002';
 
 export default function PetList() {
   const navigate = useNavigate();
@@ -66,22 +67,13 @@ export default function PetList() {
           {pets.map((pet) => (
             <div
               key={pet.id}
-              role="button"
-              tabIndex={0}
-              onClick={() => navigate(`/pets/${pet.id}`)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  navigate(`/pets/${pet.id}`);
-                }
-              }}
-              className="cursor-pointer overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-md"
+              className="overflow-hidden rounded-2xl ..."
             >
               {/* 이미지 */}
               <div className="flex h-48 items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
                 {pet.profile_image_url ? (
                   <img
-                    src={pet.profile_image_url?.startsWith('http') ? pet.profile_image_url : `http://localhost:8002/${pet.profile_image_url}`}
+                    src={pet.profile_image_url?.startsWith('http') ? pet.profile_image_url : `${BASE_URL}/${pet.profile_image_url}`}
                     alt={pet.name}
                     className="w-full h-full object-cover"
                   />
@@ -115,11 +107,11 @@ export default function PetList() {
                 <div className="mt-4 flex gap-2 border-t border-slate-100 pt-4">
                   <ButtonCore variant="secondary" className="flex-1" asChild>
                     <Link
-                      to={`/pets/${pet.id}/edit`}
+                      to={`/pets/${pet.id}`}
                       className="inline-flex w-full justify-center"
                       onClick={(e) => e.stopPropagation()}
                     >
-                      수정
+                      상세보기
                     </Link>
                   </ButtonCore>
                   <ButtonCore variant="default" className="flex-1" asChild>

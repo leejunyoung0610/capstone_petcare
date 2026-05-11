@@ -63,7 +63,6 @@ export function Notifications() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-slate-50">
-        <Header />
         <div className="flex min-h-[40vh] items-center justify-center">
           <div className="text-center">
             <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
@@ -76,7 +75,6 @@ export function Notifications() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <Header />
 
       <div className="max-w-2xl mx-auto px-4 py-12">
         {/* 헤더 */}

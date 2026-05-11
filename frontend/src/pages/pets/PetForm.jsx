@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate, useParams } from 'react-router';
+import { useNavigate, useParams, useSearchParams } from 'react-router';
 import { uploadPetProfileImage } from '../../api/pets';
 import usePetStore from '../../stores/petStore';
 import Button from '../../components/ui/Button';
@@ -9,6 +9,8 @@ export default function PetForm() {
   const navigate = useNavigate();
   const { id } = useParams();
   const isEdit = Boolean(id);
+  const [searchParams] = useSearchParams();
+  const fromMyPage = searchParams.get('from') === 'mypage';
   const fileInputRef = useRef(null);
 
   const { addPet, editPet, fetchPet, loading, error, clearError } = usePetStore();
@@ -41,7 +43,7 @@ export default function PetForm() {
         if (pet.profile_image_url) {
           const imageUrl = pet.profile_image_url.startsWith('http')
             ? pet.profile_image_url
-            : `http://localhost:8002/${pet.profile_image_url}`;
+            : `${import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:8002'}/${pet.profile_image_url}`;
           setProfileImagePreview(imageUrl);
         }
       }).catch(() => {
@@ -114,7 +116,7 @@ export default function PetForm() {
         await uploadPetProfileImage(petId, profileImage);
       }
 
-      navigate('/pets');
+      navigate(fromMyPage ? '/mypage' : '/pets');
     } catch (err) { }
   };
 
@@ -250,16 +252,24 @@ export default function PetForm() {
           {/* 성별 */}
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-2">성별</label>
-            <select
-              name="gender"
-              value={formData.gender}
-              onChange={handleChange}
-              className="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="">선택 안 함</option>
-              <option value="male">남아</option>
-              <option value="female">여아</option>
-            </select>
+            <div className="relative">
+              <select
+                name="gender"
+                value={formData.gender}
+                onChange={handleChange}
+                className="w-full appearance-none px-3 py-2.5 border border-slate-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                style={{ direction: 'ltr', textAlign: 'left' }}
+              >
+                <option value="">선택 안 함</option>
+                <option value="male">남아</option>
+                <option value="female">여아</option>
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
+                <svg className="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+            </div>
           </div>
 
           {/* 중성화 여부 */}

@@ -49,3 +49,16 @@ export const matchHospitalsWithGanadi = async (hospitals) => {
   const response = await apiClient.post('/vets/match-hospitals', { hospitals });
   return response.data;
 };
+
+// GANADI 에 승인 등록된 수의사 공용 목록
+// params: { sort: 'rating' | 'reviews' | 'recent', limit, offset, specialty }
+export const listRegisteredVets = async (params = {}) => {
+  const response = await apiClient.get('/vets/registered', { params });
+  return response.data;
+};
+
+// AI 결과 페이지 등에서 보여줄 짧은 추천 수의사 목록 (기본 3명)
+export const getRecommendedVets = async (params = {}) => {
+  const response = await apiClient.get('/vets/recommended', { params });
+  return response.data;
+};

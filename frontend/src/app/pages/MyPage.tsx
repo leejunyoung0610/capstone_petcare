@@ -1,11 +1,12 @@
 import { useEffect, useState, useRef } from "react";
-import { Link, useNavigate } from "react-router";
+import { Link, useNavigate, useSearchParams } from "react-router";
 import { authAPI } from "../../api/auth";
 import { getMyPets } from "../../api/pets";
 import { getMyOpinions } from "../../api/opinions";
 import useAuthStore from "../../stores/authStore";
 import { Header } from "../components/Header";
 import { Modal } from "../components/Modal";
+import { PushSettingsCard } from "../components/PushSettingsCard";
 import { Camera } from "lucide-react";
 import { getMyDiagnoses } from "../../api/diagnosis";
 import {
@@ -20,6 +21,7 @@ interface Pet {
   species: string;
   breed: string;
   age: number;
+  profile_image_url?: string | null;
 }
 
 interface Opinion {
@@ -70,7 +72,10 @@ const statusLabel: Record<string, string> = {
 export function MyPage() {
   const navigate = useNavigate();
   const logout = useAuthStore((s) => s.logout);
-  const [activeTab, setActiveTab] = useState<"pets" | "opinions" | "settings" | "history">("pets");
+  const [searchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState<"pets" | "opinions" | "settings" | "history">(
+    (searchParams.get('tab') as any) || "pets"
+  );
   const [pets, setPets] = useState<Pet[]>([]);
   const [diagnoses, setDiagnoses] = useState<any[]>([]);
   const [opinions, setOpinions] = useState<Opinion[]>([]);
@@ -182,13 +187,12 @@ export function MyPage() {
   return (
     <>
       <div className="min-h-screen bg-slate-50">
-        <Header />
 
         <div className="max-w-5xl mx-auto px-4 py-12">
           {/* 프로필 헤더 */}
           <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm mb-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-5">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
                 <div
                   className="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center text-4xl flex-shrink-0 cursor-pointer relative overflow-hidden"
                   onClick={() => profileImageRef.current?.click()}
@@ -228,7 +232,7 @@ export function MyPage() {
               </div>
               <button
                 onClick={() => setActiveTab("settings")}
-                className="flex items-center gap-2 px-4 py-2 border border-slate-300 rounded-lg text-sm text-slate-600 hover:bg-slate-50"
+                className="flex flex-col items-center gap-1 px-3 py-2 border border-slate-300 rounded-lg text-xs text-slate-600 hover:bg-slate-50 flex-shrink-0"
               >
                 <Settings className="w-4 h-4" />
                 설정
@@ -246,7 +250,7 @@ export function MyPage() {
               <button
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key as any)}
-                className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeTab === tab.key
+                className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition-colors ${activeTab === tab.key
                   ? "bg-white text-slate-900 shadow-sm"
                   : "text-slate-500 hover:text-slate-700"
                   }`}
@@ -283,15 +287,23 @@ export function MyPage() {
                 <div className="grid md:grid-cols-3 gap-4">
                   {pets.map((pet) => (
                     <div key={pet.id} className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm text-center">
-                      <div className="w-24 h-24 bg-slate-100 rounded-full mx-auto mb-4 flex items-center justify-center text-4xl">
-                        {pet.species === "dog" ? "🐕" : "🐱"}
+                      <div className="w-24 h-24 bg-slate-100 rounded-full mx-auto mb-4 flex items-center justify-center text-4xl overflow-hidden">
+                        {pet.profile_image_url ? (
+                          <img
+                            src={pet.profile_image_url.startsWith('http') ? pet.profile_image_url : `${import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:8002'}/${pet.profile_image_url}`}
+                            alt={pet.name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          pet.species === "dog" ? "🐕" : "🐱"
+                        )}
                       </div>
                       <h3 className="font-bold text-slate-900 mb-1">{pet.name}</h3>
                       <p className="text-sm text-slate-500 mb-4">
                         {pet.species === "dog" ? "강아지" : "고양이"} · {pet.breed} · {pet.age}세
                       </p>
                       <div className="flex gap-2">
-                        <Link to={`/pets/${pet.id}/edit`} className="flex-1">
+                        <Link to={`/pets/${pet.id}/edit?from=mypage`} className="flex-1">
                           <button className="w-full py-2 border border-slate-300 rounded-lg text-sm text-slate-600 hover:bg-slate-50">
                             수정
                           </button>
@@ -332,9 +344,14 @@ export function MyPage() {
                     <Link key={item.id} to={`/diagnosis/${item.id}`}>
                       <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:shadow-md transition cursor-pointer">
                         <div className="flex justify-between items-center mb-2">
-                          <span className={`text-xs px-3 py-1 rounded-full font-medium ${item.is_normal ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                            {item.is_normal ? '정상' : item.main_disease}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            {item.pet_name && (
+                              <span className="text-base font-bold text-slate-700">{item.pet_name}</span>
+                            )}
+                            <span className={`text-xs px-3 py-1 rounded-full font-medium ${item.is_normal ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                              {item.is_normal ? '정상' : item.main_disease}
+                            </span>
+                          </div>
                           <span className="text-xs text-slate-400">
                             {new Date(item.created_at).toLocaleDateString()}
                           </span>
@@ -353,7 +370,12 @@ export function MyPage() {
           {/* 수의사 소견 탭 */}
           {activeTab === "opinions" && (
             <div className="space-y-4">
-              <h2 className="text-lg font-bold text-slate-900">수의사 소견 내역</h2>
+              <div className="flex justify-between items-center">
+                <h2 className="text-lg font-bold text-slate-900">수의사 소견 내역</h2>
+                <Link to="/opinions" className="text-sm text-blue-600 hover:underline">
+                  전체 보기 →
+                </Link>
+              </div>
 
               {opinions.length === 0 ? (
                 <div className="bg-white border border-slate-200 rounded-xl p-16 text-center shadow-sm">
@@ -365,7 +387,7 @@ export function MyPage() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {opinions.map((opinion) => (
+                  {opinions.slice(0, 5).map((opinion) => (
                     <div key={opinion.id} className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
                       <div className="flex justify-between items-start mb-3">
                         <div>
@@ -383,7 +405,6 @@ export function MyPage() {
                           </p>
                         </div>
                       </div>
-
                       {opinion.status === "COMPLETED" && (
                         <Link to={`/opinions/${opinion.id}`}>
                           <button className="flex items-center gap-2 px-3 py-1.5 border border-slate-300 rounded-lg text-sm text-slate-600 hover:bg-slate-50">
@@ -394,7 +415,7 @@ export function MyPage() {
                       )}
                       {opinion.status === "IN_PROGRESS" && (
                         <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-700">
-                          수의사가 검토 중입니다. 평균 12~24시간 내 소견이 제공됩니다.
+                          수의사가 검토 중입니다.
                         </div>
                       )}
                       {opinion.status === "PENDING" && (
@@ -404,6 +425,11 @@ export function MyPage() {
                       )}
                     </div>
                   ))}
+                  {opinions.length > 5 && (
+                    <Link to="/opinions" className="block text-center text-sm text-blue-600 hover:underline py-2">
+                      + {opinions.length - 5}개 더 보기
+                    </Link>
+                  )}
                 </div>
               )}
             </div>
@@ -413,6 +439,8 @@ export function MyPage() {
           {activeTab === "settings" && (
             <div className="space-y-4">
               <h2 className="text-lg font-bold text-slate-900">설정</h2>
+
+              <PushSettingsCard />
 
               <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
                 <h3 className="font-bold text-slate-900 mb-4">프로필 정보</h3>

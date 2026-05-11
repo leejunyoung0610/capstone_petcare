@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router";
+import { Link, useSearchParams } from "react-router";
 import { Header } from "../components/Header";
 import {
   Search,
@@ -74,7 +74,11 @@ const apiKey = import.meta.env.VITE_KAKAO_MAP_KEY as string | undefined;
 export function VetSearch() {
   const [searchQuery, setSearchQuery] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("ganadi");
-  const [onlyGanadi, setOnlyGanadi] = useState(false);
+  // ?ganadi=1 URL 쿼리로 들어오면 자동으로 "등록 병원만" 필터 ON
+  const [searchParams] = useSearchParams();
+  const [onlyGanadi, setOnlyGanadi] = useState(
+    () => searchParams.get("ganadi") === "1" || searchParams.get("ganadi") === "true"
+  );
 
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
   const [loading, setLoading] = useState(false);
@@ -380,7 +384,6 @@ export function VetSearch() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <Header />
 
       <div className="max-w-7xl mx-auto px-4 py-5 sm:py-10">
         {/* 헤더 — 모바일에선 한 줄, 다시 검색은 아이콘 버튼 */}
@@ -484,15 +487,19 @@ export function VetSearch() {
               >
                 평점순
               </button>
-              <label className="ml-1 inline-flex shrink-0 items-center gap-1.5 text-xs text-slate-700 sm:ml-2 sm:text-sm">
-                <input
-                  type="checkbox"
-                  className="h-4 w-4"
-                  checked={onlyGanadi}
-                  onChange={(e) => setOnlyGanadi(e.target.checked)}
-                />
+              <button
+                type="button"
+                onClick={() => setOnlyGanadi((v) => !v)}
+                className={`ml-1 inline-flex shrink-0 items-center gap-1 rounded-full px-3 py-1.5 text-xs font-semibold ring-1 transition sm:ml-2 sm:text-sm ${
+                  onlyGanadi
+                    ? "bg-blue-600 text-white ring-blue-600"
+                    : "bg-white text-slate-700 ring-slate-200 hover:bg-slate-50"
+                }`}
+                aria-pressed={onlyGanadi}
+              >
+                <ShieldCheck className="h-3.5 w-3.5" />
                 GANADI 인증만
-              </label>
+              </button>
             </div>
           </div>
         </div>

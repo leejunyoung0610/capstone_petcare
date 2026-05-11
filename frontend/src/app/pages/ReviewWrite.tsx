@@ -37,7 +37,7 @@ export function ReviewWrite() {
 
       <div className="max-w-xl mx-auto px-4 py-12">
         <h1 className="text-xl font-bold text-slate-900 mb-1">리뷰 작성</h1>
-        <p className="text-sm text-slate-500 mb-8">수의사 소견에 대한 후기를 남겨주세요</p>
+        <p className="text-sm text-slate-500 mb-8">수의사 소견에 대한 후기를 남겨주세요.</p>
 
         <div className="space-y-4">
           {/* 별점 */}

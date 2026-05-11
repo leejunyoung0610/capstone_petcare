@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { getMyOpinions, cancelOpinion } from "../../api/opinions";
 import { Header } from "../components/Header";
-import { MessageCircle, Calendar, Eye } from "lucide-react";
+import { MessageCircle, Calendar, Eye, ArrowLeft } from "lucide-react";
 
 interface Opinion {
   id: number;
@@ -84,6 +84,13 @@ export function OpinionList() {
       <Header />
 
       <div className="max-w-2xl mx-auto px-4 py-12">
+        <button
+          onClick={() => navigate("/mypage?tab=opinions")}
+          className="flex items-center gap-2 text-sm text-slate-500 mb-4 hover:text-slate-900"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          수의사 소견으로 돌아가기
+        </button>
         <h1 className="text-xl font-bold text-slate-900 mb-6">소견 요청 내역</h1>
 
         {/* 필터 탭 */}
@@ -93,8 +100,8 @@ export function OpinionList() {
               key={tab}
               onClick={() => setActiveTab(tab)}
               className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === tab
-                  ? "bg-white text-slate-900 shadow-sm"
-                  : "text-slate-500 hover:text-slate-700"
+                ? "bg-white text-slate-900 shadow-sm"
+                : "text-slate-500 hover:text-slate-700"
                 }`}
             >
               {tab}

@@ -1,10 +1,12 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router';
 import { format, addHours } from 'date-fns';
 import clsx from 'clsx';
+import { Star, MapPin } from 'lucide-react';
 import useDiagnosisStore from '../../stores/diagnosisStore';
 import Button from '../../components/ui/Button';
 import { ButtonCore } from '../../components/ui/button-core';
+import { getRecommendedVets } from '../../api/vets';
 
 export default function DiagnoseResult() {
   const { id } = useParams();
@@ -199,12 +201,15 @@ export default function DiagnoseResult() {
                   </p>
                   <ButtonCore variant="default" asChild className="w-full">
                     <Link to="/vets" className="inline-flex w-full justify-center text-sm">
-                      🏥 수의사 소견 요청하기
+                      🏥 병원 찾기 / 소견 요청
                     </Link>
                   </ButtonCore>
                 </div>
               )}
             </div>
+
+            {/* GANADI 등록 수의사 직접 추천 — 비정상일 때만 노출 */}
+            {!is_normal && <RecommendedVetsCard />}
 
             {/* 다음 단계 */}
             <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 shadow-sm">
@@ -228,6 +233,98 @@ export default function DiagnoseResult() {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+/** AI 결과 페이지 안에서 GANADI 등록 수의사 상위 3명을 보여주는 카드 */
+function RecommendedVetsCard() {
+  const [vets, setVets] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let alive = true;
+    getRecommendedVets({ limit: 3 })
+      .then((data) => alive && setVets(Array.isArray(data) ? data : []))
+      .catch(() => alive && setVets([]))
+      .finally(() => alive && setLoading(false));
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="h-4 w-40 animate-pulse rounded bg-slate-100" />
+        <div className="mt-3 space-y-2">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="h-14 animate-pulse rounded-lg bg-slate-50" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (vets.length === 0) {
+    // 등록 수의사가 아직 없는 환경(시연 전) — 카드를 숨겨 빈 공간 방지
+    return null;
+  }
+
+  return (
+    <div className="rounded-xl border border-blue-100 bg-blue-50/50 p-5 shadow-sm">
+      <div className="mb-3 flex items-start justify-between gap-2">
+        <div>
+          <h3 className="text-sm font-bold text-slate-900 sm:text-base">
+            🌟 GANADI 등록 수의사에게 바로 요청
+          </h3>
+          <p className="mt-0.5 text-xs text-slate-500">
+            검증된 수의사가 평균 12\~24시간 내 답변
+          </p>
+        </div>
+        <Link
+          to="/vets?ganadi=1"
+          className="shrink-0 text-xs font-semibold text-blue-600 hover:underline"
+        >
+          전체 보기
+        </Link>
+      </div>
+
+      <ul className="space-y-2">
+        {vets.map((v) => (
+          <li key={v.id}>
+            <Link
+              to={`/opinion-request/${v.id}`}
+              className="flex items-center gap-3 rounded-lg border border-slate-200 bg-white p-3 transition hover:border-blue-300 hover:bg-blue-50"
+            >
+              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-violet-500 text-sm font-bold text-white">
+                {v.name?.slice(0, 1) || '🩺'}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5">
+                  <p className="truncate text-sm font-semibold text-slate-900">
+                    {v.name}
+                  </p>
+                  {typeof v.rating === 'number' && (
+                    <span className="inline-flex items-center gap-0.5 text-[11px] text-amber-500">
+                      <Star className="h-3 w-3 fill-current" />
+                      {v.rating.toFixed(1)}
+                      <span className="text-slate-400">({v.review_count})</span>
+                    </span>
+                  )}
+                </div>
+                <p className="truncate text-xs text-slate-500">
+                  {v.hospital_name}
+                  {v.specialty ? ` · ${v.specialty}` : ''}
+                </p>
+              </div>
+              <span className="shrink-0 rounded-md bg-blue-600 px-2.5 py-1 text-[11px] font-semibold text-white">
+                요청
+              </span>
+            </Link>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

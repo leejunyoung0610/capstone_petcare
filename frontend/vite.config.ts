@@ -11,7 +11,13 @@ export default defineConfig({
     react(),
     tailwindcss(),
     VitePWA({
+      // Web Push (`push`, `notificationclick` 이벤트) 를 워크박스 자동 SW 가
+      // 제공하지 않으므로 injectManifest 모드로 전환하고 src/sw.ts 를 직접 작성.
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.ts',
       registerType: 'prompt',
+      injectRegister: 'auto',
       includeAssets: [
         'favicon.svg',
         'icons.svg',
@@ -54,64 +60,11 @@ export default defineConfig({
           },
         ],
       },
-      workbox: {
+      // injectManifest 모드에서는 globPatterns 만 사용 (runtimeCaching 은 sw.ts 안에서 직접 등록)
+      injectManifest: {
         globPatterns: ['**/*.{js,css,html,svg,png,webp,ico,woff2}'],
-        // Vite 5 + workbox-build 조합에서 terser worker 가 hang 되는
-        // 알려진 이슈 회피 — SW 자체 minify 비활성. (앱 번들은 vite 가 minify)
-        mode: 'development',
-        // API 호출은 캐시하지 않고 항상 네트워크 우선 (오프라인은 회피용 캐시만)
-        runtimeCaching: [
-          {
-            // 백엔드 API — NetworkFirst
-            urlPattern: /^https?:\/\/[^/]+\/api\/.*/i,
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'ganadi-api-cache',
-              networkTimeoutSeconds: 5,
-              expiration: {
-                maxEntries: 80,
-                maxAgeSeconds: 60 * 5,
-              },
-              cacheableResponse: { statuses: [0, 200] },
-            },
-          },
-          {
-            // 카카오맵 SDK / 타일 — StaleWhileRevalidate
-            urlPattern: /^https:\/\/(dapi|t1)\.kakao(cdn)?\.com\/.*/i,
-            handler: 'StaleWhileRevalidate',
-            options: {
-              cacheName: 'kakao-maps-cache',
-              expiration: {
-                maxEntries: 200,
-                maxAgeSeconds: 60 * 60 * 24,
-              },
-            },
-          },
-          {
-            // Pretendard / Google Fonts — CacheFirst (1년)
-            urlPattern: /^https:\/\/cdn\.jsdelivr\.net\/.*\.(css|woff2)/i,
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'fonts-cache',
-              expiration: {
-                maxEntries: 30,
-                maxAgeSeconds: 60 * 60 * 24 * 365,
-              },
-            },
-          },
-          {
-            urlPattern: /^https:\/\/fonts\.(googleapis|gstatic)\.com\/.*/i,
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'google-fonts-cache',
-              expiration: {
-                maxEntries: 30,
-                maxAgeSeconds: 60 * 60 * 24 * 365,
-              },
-            },
-          },
-        ],
-        navigateFallbackDenylist: [/^\/api\//, /^\/uploads\//],
+        // Vite 5 + esbuild 조합에서 SW 자체는 빠르게만 번들
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
       },
       devOptions: {
         enabled: false, // 개발 중엔 SW 비활성 — HMR 충돌 방지

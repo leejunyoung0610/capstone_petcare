@@ -26,12 +26,6 @@ export const getOpinion = async (opinionId) => {
   return response.data;
 };
 
-// 진단 ID 로 그 진단에 달린 "최신 소견" 1건 조회 (보호자 전용)
-export const getLatestOpinionByDiagnosis = async (diagnosisId) => {
-  const response = await apiClient.get(`/opinions/${diagnosisId}`);
-  return response.data;
-};
-
 // 수의사: 소견 요청 목록 (status: pending | answered)
 export const getVetOpinionRequests = async (status) => {
   const params = status ? { status } : {};

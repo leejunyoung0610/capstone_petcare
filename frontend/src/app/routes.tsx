@@ -64,33 +64,26 @@ function AdminLayout() {
 export const router = createBrowserRouter([
   { path: '/', Component: Home },
   { path: '/login', Component: Login },
-  { path: '/auth/kakao/callback', Component: KakaoCallback }, 
+  { path: '/auth/kakao/callback', Component: KakaoCallback },
   { path: '/register', Component: Register },
   { path: '/vet/register', Component: VetRegister },
 
-  { path: '/vets', Component: VetSearch },
-  { path: '/opinion-request/:vetId', Component: OpinionRequest },
-  { path: '/opinions', Component: OpinionList },
-  { path: '/opinions/:requestId', Component: OpinionDetail },
-  { path: '/opinions/:opinionId/review', Component: ReviewWrite },
-  { path: '/notifications', Component: Notifications },
-  { path: '/mypage', Component: MyPage },
-  { path: '/encyclopedia', Component: DiseaseEncyclopedia },
-  { path: '/encyclopedia/:id', Component: DiseaseDetail },
-  { path: '/announcements', Component: Announcements },
-  { path: '/announcements/:id', Component: AnnouncementDetail },
-  
-  { path: '/vet', Component: VetLayout, children: [
-    { path: 'dashboard', Component: VetDashboard },
-    { path: 'profile', Component: VetProfile },
-    { path: 'opinions/:opinionId/write', Component: VetOpinionWrite },
-    { path: 'opinions/:opinionId/complete', Component: VetOpinionComplete },
-    { path: 'diagnosis/:diagnosisId', Component: VetDiagnosisDetail },
-  ]},
 
-  { path: '/admin', Component: AdminLayout, children: [
-    { path: 'dashboard', Component: AdminDashboard },
-  ]},
+  {
+    path: '/vet', Component: VetLayout, children: [
+      { path: 'dashboard', Component: VetDashboard },
+      { path: 'profile', Component: VetProfile },
+      { path: 'opinions/:opinionId/write', Component: VetOpinionWrite },
+      { path: 'opinions/:opinionId/complete', Component: VetOpinionComplete },
+      { path: 'diagnosis/:diagnosisId', Component: VetDiagnosisDetail },
+    ]
+  },
+
+  {
+    path: '/admin', Component: AdminLayout, children: [
+      { path: 'dashboard', Component: AdminDashboard },
+    ]
+  },
 
   {
     Component: ProtectedLayout,
@@ -109,6 +102,17 @@ export const router = createBrowserRouter([
           { path: 'diagnosis/new', Component: DiagnoseNew },
           { path: 'result/:id', Component: DiagnoseResult },
           { path: 'diagnosis/:id', Component: DiagnoseResult },
+          { path: '/vets', Component: VetSearch },
+          { path: '/opinion-request/:vetId', Component: OpinionRequest },
+          { path: '/opinions', Component: OpinionList },
+          { path: '/opinions/:requestId', Component: OpinionDetail },
+          { path: '/opinions/:opinionId/review', Component: ReviewWrite },
+          { path: '/notifications', Component: Notifications },
+          { path: '/mypage', Component: MyPage },
+          { path: '/encyclopedia', Component: DiseaseEncyclopedia },
+          { path: '/encyclopedia/:id', Component: DiseaseDetail },
+          { path: '/announcements', Component: Announcements },
+          { path: '/announcements/:id', Component: AnnouncementDetail },
         ],
       },
     ],

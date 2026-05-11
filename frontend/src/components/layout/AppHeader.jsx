@@ -133,37 +133,30 @@ export default function AppHeader() {
 
       {mobileOpen && (
         <div className="border-t border-slate-200/80 bg-white/95 px-4 py-3 backdrop-blur-md lg:hidden">
+          {/* 하단 탭바에 5개 주요 메뉴(홈/반려동물/AI/병원/마이) 가 있으므로
+              햄버거 메뉴에는 보조 메뉴(백과·공지 등)만 노출해서 중복을 줄임 */}
           <nav className="flex flex-col gap-1 text-sm">
-            <NavLink to="/diagnosis/new" className={navClass} onClick={() => setMobileOpen(false)}>
-              AI 분석
-            </NavLink>
-            <NavLink to="/vets" className={navClass} onClick={() => setMobileOpen(false)}>
-              수의사 찾기
-            </NavLink>
             <NavLink to="/encyclopedia" className={navClass} onClick={() => setMobileOpen(false)}>
               질환 백과
             </NavLink>
-            <NavLink to="/announcements" className={navClass}>
+            <NavLink to="/announcements" className={navClass} onClick={() => setMobileOpen(false)}>
               공지사항
             </NavLink>
-            {isAuthenticated && (
-              <>
-                <NavLink to="/pets" className={navClass} onClick={() => setMobileOpen(false)}>
-                  반려동물
-                </NavLink>
-                <NavLink to="/dashboard" className={navClass} onClick={() => setMobileOpen(false)}>
-                  대시보드
-                </NavLink>
-                <button
-                  type="button"
-                  onClick={handleLogout}
-                  className="mt-2 w-full rounded-xl border border-slate-200 py-2.5 text-left font-semibold text-slate-800"
-                >
-                  로그아웃
-                </button>
-              </>
-            )}
-            {!isAuthenticated && (
+            <NavLink to="/diagnosis/history" className={navClass} onClick={() => setMobileOpen(false)}>
+              내 진단 이력
+            </NavLink>
+            <NavLink to="/opinions" className={navClass} onClick={() => setMobileOpen(false)}>
+              내 소견 요청
+            </NavLink>
+            {isAuthenticated ? (
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="mt-2 rounded-lg border border-slate-200 py-2 text-center text-sm font-semibold text-slate-700"
+              >
+                로그아웃
+              </button>
+            ) : (
               <div className="mt-2 flex flex-col gap-2 border-t border-slate-200 pt-3">
                 <Link
                   to="/login"

@@ -42,6 +42,21 @@ export default function DiagnoseNew() {
     }
   }, []);
 
+  // 카메라 직접 촬영 — onDrop 과 동일한 후처리 흐름 재사용
+  const cameraInputRef = useRef(null);
+  const handleCameraSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      alert('이미지 크기는 5MB 이하여야 합니다.');
+      e.target.value = '';
+      return;
+    }
+    onDrop([file]);
+    // 같은 파일을 다시 선택해도 onChange 가 발화되도록 초기화
+    e.target.value = '';
+  };
+
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: {
@@ -95,7 +110,7 @@ export default function DiagnoseNew() {
 
       {/* 진행 상태 — 모바일은 작은 한 줄, sm+ 는 풍성하게 */}
       <div className="mb-5 mt-4 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:mb-10 sm:mt-8 sm:p-5">
-        <div className="flex items-center justify-between gap-1 sm:justify-center sm:gap-3">
+        <div className="flex items-center justify-center gap-2 py-1">
           <StepPill index={1} label="반려동물" active={step >= 1} />
           <Connector active={step >= 2} />
           <StepPill index={2} label="사진 업로드" active={step >= 2} />
@@ -117,20 +132,28 @@ export default function DiagnoseNew() {
             <h3 className="mb-2.5 text-sm font-bold text-slate-900 sm:text-base">
               1. 반려동물 선택
             </h3>
-            <select
-              className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              value={selectedPetId}
-              onChange={(e) => setSelectedPetId(e.target.value)}
-            >
-              <option value="">반려동물을 선택하세요</option>
-              {pets.map((pet) => (
-                <option key={pet.id} value={pet.id}>
-                  {pet.name} ({pet.species === 'dog' ? '강아지' : '고양이'}
-                  {pet.breed && `, ${pet.breed}`}
-                  {pet.age && `, ${pet.age}세`})
-                </option>
-              ))}
-            </select>
+            <div className="relative">
+              <select
+                className="w-full appearance-none rounded-lg border border-slate-300 px-3 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
+                value={selectedPetId}
+                onChange={(e) => setSelectedPetId(e.target.value)}
+                style={{ direction: 'ltr', textAlign: 'left' }}
+              >
+                <option value="">반려동물을 선택하세요</option>
+                {pets.map((pet) => (
+                  <option key={pet.id} value={pet.id}>
+                    {pet.name} ({pet.species === 'dog' ? '강아지' : '고양이'}
+                    {pet.breed && `, ${pet.breed}`}
+                    {pet.age && `, ${pet.age}세`})
+                  </option>
+                ))}
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
+                <svg className="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+            </div>
             <Link
               to="/pets/new"
               className="mt-2 inline-block text-xs font-medium text-blue-600 hover:underline sm:text-sm"
@@ -147,11 +170,10 @@ export default function DiagnoseNew() {
             {!imagePreview ? (
               <div
                 {...getRootProps()}
-                className={`cursor-pointer rounded-xl border-2 border-dashed p-6 text-center transition sm:p-10 ${
-                  isDragActive
-                    ? 'border-blue-500 bg-blue-50'
-                    : 'border-slate-200 hover:border-blue-300'
-                }`}
+                className={`cursor-pointer rounded-xl border-2 border-dashed p-6 text-center transition sm:p-10 ${isDragActive
+                  ? 'border-blue-500 bg-blue-50'
+                  : 'border-slate-200 hover:border-blue-300'
+                  }`}
               >
                 <input {...getInputProps()} />
                 <UploadIcon className="mx-auto mb-2 h-8 w-8 text-slate-300 sm:mb-3 sm:h-10 sm:w-10" />
@@ -228,13 +250,22 @@ export default function DiagnoseNew() {
                 </div>
               </div>
             )}
+            {/* 카메라 직접 촬영 — 모바일에서는 후면 카메라가 바로 열림 (capture=environment) */}
+            <input
+              ref={cameraInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={handleCameraSelect}
+              className="hidden"
+            />
             <button
               type="button"
-              disabled
-              className="mt-2.5 flex w-full cursor-not-allowed items-center justify-center gap-1.5 rounded-lg border border-slate-200 py-2 text-xs text-slate-400 sm:mt-3 sm:text-sm"
+              onClick={() => cameraInputRef.current?.click()}
+              className="mt-2.5 flex w-full items-center justify-center gap-1.5 rounded-lg border border-slate-200 py-2 text-xs font-medium text-slate-700 transition hover:bg-slate-50 active:scale-[0.98] sm:mt-3 sm:text-sm"
             >
               <Camera className="h-4 w-4" />
-              카메라로 촬영 (준비 중)
+              카메라로 촬영
             </button>
           </section>
 
@@ -316,21 +347,18 @@ export default function DiagnoseNew() {
 function StepPill({ index, label, active }) {
   return (
     <div
-      className={`flex min-w-0 items-center gap-1.5 rounded-full px-2.5 py-1.5 ring-1 sm:gap-2.5 sm:px-3 sm:py-2 ${
-        active ? 'bg-blue-50 ring-blue-100' : 'bg-slate-50 ring-slate-200'
-      }`}
+      className={`flex items-center gap-1.5 rounded-full px-2.5 py-1.5 ring-1 sm:gap-2.5 sm:px-3 sm:py-2 ${active ? 'bg-blue-50 ring-blue-100' : 'bg-slate-50 ring-slate-200'
+        }`}
     >
       <span
-        className={`flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-white sm:h-8 sm:w-8 sm:text-sm ${
-          active ? 'bg-blue-600' : 'bg-slate-300'
-        }`}
+        className={`text-[11px] font-bold sm:text-sm ${active ? 'text-blue-600' : 'text-slate-300'
+          }`}
       >
         {index}
       </span>
       <span
-        className={`truncate text-[11px] sm:text-sm ${
-          active ? 'font-semibold text-slate-800' : 'text-slate-400'
-        }`}
+        className={`text-[11px] sm:text-sm ${active ? 'font-semibold text-slate-800' : 'text-slate-400'
+          }`}
       >
         {label}
       </span>
@@ -341,9 +369,8 @@ function StepPill({ index, label, active }) {
 function Connector({ active }) {
   return (
     <div
-      className={`h-px flex-1 sm:w-10 sm:flex-initial md:w-14 ${
-        active ? 'bg-blue-200' : 'bg-slate-200'
-      }`}
+      className={`h-px w-6 flex-shrink-0 sm:w-10 md:w-14 ${active ? 'bg-blue-200' : 'bg-slate-200'
+        }`}
     />
   );
 }

@@ -162,8 +162,14 @@ def save_results(results, species, output_dir='models/classifier/eval_results'):
 
 def main():
     """메인 실행"""
-    # 설정
-    species = 'dog'  # 또는 'cat'
+    import argparse
+
+    parser = argparse.ArgumentParser(description='강아지/고양이 모델 종합 검증')
+    parser.add_argument('--species', type=str, default='dog', choices=['dog', 'cat'],
+                        help='검증할 종 (dog | cat)')
+    args = parser.parse_args()
+
+    species = args.species
     device = 'mps' if torch.backends.mps.is_available() else 'cpu'
     
     print(f"\n🔍 {species.upper()} 모델 검증 시작...")

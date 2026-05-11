@@ -489,7 +489,7 @@ export function AdminDashboard() {
             type="button"
             className="relative rounded-lg p-2 text-slate-500 hover:bg-slate-100"
             aria-label="알림"
-            onClick={() => window.alert("관리자 알림 센터는 추후 notifications API 와 연동할 수 있습니다.")}
+            onClick={() => navigate("/notifications")}
           >
             <Bell className="h-4 w-4" />
             {(stats?.open_reports_count ?? 0) > 0 && (

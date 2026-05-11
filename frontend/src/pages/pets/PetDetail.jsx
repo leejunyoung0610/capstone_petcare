@@ -3,11 +3,12 @@ import { useNavigate, useParams, Link } from 'react-router';
 import usePetStore from '../../stores/petStore';
 import { ButtonCore } from '../../components/ui/button-core';
 import { Modal } from '../../app/components/Modal';
+const BASE_URL = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:8002';
 
 export default function PetDetail() {
   const navigate = useNavigate();
   const { id } = useParams();
-  const { fetchPet, selectedPet, loading, error, deletePet } = usePetStore();
+  const { fetchPet, selectedPet, loading, error, removePet: deletePet } = usePetStore();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   useEffect(() => {
@@ -65,7 +66,7 @@ export default function PetDetail() {
         <div className="flex justify-center mb-6">
           {pet.profile_image_url ? (
             <img
-              src={pet.profile_image_url?.startsWith('http') ? pet.profile_image_url : `http://localhost:8002/${pet.profile_image_url}`}
+              src={pet.profile_image_url?.startsWith('http') ? pet.profile_image_url : `${BASE_URL}/${pet.profile_image_url}`}
               alt={pet.name}
               className="w-40 h-40 rounded-full object-cover border-4 border-slate-200"
             />
