@@ -16,6 +16,7 @@ import json
 
 from models.classifier.model import create_model, count_parameters
 from models.classifier.dataset import create_dataloader
+from models.classifier.losses import build_per_disease_losses
 
 
 # 설정
@@ -45,8 +46,18 @@ class Config:
     LR = 1e-5  # 1e-4 → 1e-5 (낮춤)
     WEIGHT_DECAY = 1e-4
     
-    # 클래스 불균형 처리
-    USE_SAMPLER = False  # True → False (오버피팅 방지)
+    # 클래스 불균형 · 손실 · 증강 (고양이 결막염 등 개선 실험)
+    # LOSS_TYPE: ce | weighted_ce | focal
+    LOSS_TYPE = "focal"
+    USE_CLASS_WEIGHTS = True
+    FOCAL_GAMMA = 2.0
+    # aug_preset: default | cat_phone (색·압축·블러 강화 — 강아지 학습 시 자동으로 default)
+    AUG_PRESET = "cat_phone"
+    USE_SAMPLER = False
+    # 고양이만 True 권장: WeightedRandomSampler + 결막염 소수 클래스 부스트
+    USE_SAMPLER_FOR_CAT = True
+    SAMPLER_BOOST_DISEASE = "결막염"
+    SAMPLER_BOOST_FACTOR = 2.5
     
     # Early Stopping
     PATIENCE = 5
@@ -79,81 +90,69 @@ def get_device():
 def train_epoch(
     model: nn.Module,
     dataloader: DataLoader,
-    criterion: nn.Module,
+    criterion_dict: nn.ModuleDict,
     optimizer: optim.Optimizer,
     device: str,
-    diseases: list
+    diseases: list,
 ) -> Dict[str, float]:
     """1 epoch 학습"""
     model.train()
-    
+
     total_loss = 0.0
     disease_losses = {d: 0.0 for d in diseases}
     disease_corrects = {d: 0 for d in diseases}
     disease_totals = {d: 0 for d in diseases}
-    
+
     progress = tqdm(dataloader, desc="Training")
-    
+
     for images, labels in progress:
         images = images.to(device)
-        
-        # Forward
+
         outputs = model(images)
-        
-        # 질환별 Loss 계산
-        loss = 0
+
+        loss = torch.tensor(0.0, device=device)
         batch_losses = {}
-        
+
         for disease in diseases:
             disease_labels = labels[disease].to(device)
             disease_outputs = outputs[disease]
-            
-            # 유효한 샘플만 (label >= 0)
+
             valid_mask = disease_labels >= 0
             if valid_mask.sum() == 0:
                 continue
-            
+
             valid_labels = disease_labels[valid_mask]
             valid_outputs = disease_outputs[valid_mask]
-            
-            # CrossEntropy Loss
-            disease_loss = criterion(valid_outputs, valid_labels)
-            loss += disease_loss
-            
-            # 통계
+
+            disease_loss = criterion_dict[disease](valid_outputs, valid_labels)
+            loss = loss + disease_loss
+
             disease_losses[disease] += disease_loss.item() * valid_mask.sum().item()
             _, preds = torch.max(valid_outputs, 1)
             disease_corrects[disease] += (preds == valid_labels).sum().item()
             disease_totals[disease] += valid_mask.sum().item()
-            
+
             batch_losses[disease] = disease_loss.item()
-        
-        # Backward
+
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-        
+
         total_loss += loss.item()
-        
-        # Progress bar 업데이트
-        progress.set_postfix({
-            'loss': loss.item()
-        })
-    
-    # Epoch 통계 계산
+
+        progress.set_postfix({"loss": loss.item()})
+
     avg_loss = total_loss / len(dataloader)
-    
-    metrics = {
-        'loss': avg_loss
-    }
-    
+
+    metrics = {"loss": avg_loss}
+
     for disease in diseases:
         if disease_totals[disease] > 0:
             disease_loss = disease_losses[disease] / disease_totals[disease]
             disease_acc = disease_corrects[disease] / disease_totals[disease]
-            metrics[f'{disease}_loss'] = disease_loss
-            metrics[f'{disease}_acc'] = disease_acc
-    
+            metrics[f"{disease}_loss"] = disease_loss
+            metrics[f"{disease}_acc"] = disease_acc
+
     return metrics
 
 
@@ -161,67 +160,59 @@ def train_epoch(
 def validate_epoch(
     model: nn.Module,
     dataloader: DataLoader,
-    criterion: nn.Module,
+    criterion_dict: nn.ModuleDict,
     device: str,
-    diseases: list
+    diseases: list,
 ) -> Dict[str, float]:
     """검증"""
     model.eval()
-    
+
     total_loss = 0.0
     disease_losses = {d: 0.0 for d in diseases}
     disease_corrects = {d: 0 for d in diseases}
     disease_totals = {d: 0 for d in diseases}
-    
+
     progress = tqdm(dataloader, desc="Validation")
-    
+
     for images, labels in progress:
         images = images.to(device)
-        
-        # Forward
+
         outputs = model(images)
-        
-        # 질환별 Loss 계산
-        loss = 0
-        
+
+        loss = torch.tensor(0.0, device=device)
+
         for disease in diseases:
             disease_labels = labels[disease].to(device)
             disease_outputs = outputs[disease]
-            
-            # 유효한 샘플만
+
             valid_mask = disease_labels >= 0
             if valid_mask.sum() == 0:
                 continue
-            
+
             valid_labels = disease_labels[valid_mask]
             valid_outputs = disease_outputs[valid_mask]
-            
-            # Loss
-            disease_loss = criterion(valid_outputs, valid_labels)
-            loss += disease_loss
-            
-            # 통계
+
+            disease_loss = criterion_dict[disease](valid_outputs, valid_labels)
+            loss = loss + disease_loss
+
             disease_losses[disease] += disease_loss.item() * valid_mask.sum().item()
             _, preds = torch.max(valid_outputs, 1)
             disease_corrects[disease] += (preds == valid_labels).sum().item()
             disease_totals[disease] += valid_mask.sum().item()
-        
+
         total_loss += loss.item()
-    
-    # 통계 계산
+
     avg_loss = total_loss / len(dataloader)
-    
-    metrics = {
-        'loss': avg_loss
-    }
-    
+
+    metrics = {"loss": avg_loss}
+
     for disease in diseases:
         if disease_totals[disease] > 0:
             disease_loss = disease_losses[disease] / disease_totals[disease]
             disease_acc = disease_corrects[disease] / disease_totals[disease]
-            metrics[f'{disease}_loss'] = disease_loss
-            metrics[f'{disease}_acc'] = disease_acc
-    
+            metrics[f"{disease}_loss"] = disease_loss
+            metrics[f"{disease}_acc"] = disease_acc
+
     return metrics
 
 
@@ -254,13 +245,29 @@ def train():
     print(f"  - Image Size: {config.IMG_SIZE}")
     print(f"  - Learning Rate: {config.LR}")
     print(f"  - Device: {device}")
-    print(f"  - WeightedSampler: {'ON' if config.USE_SAMPLER else 'OFF'}")
-    
+    print(f"  - Loss: {config.LOSS_TYPE} (class_weights={config.USE_CLASS_WEIGHTS}, γ={config.FOCAL_GAMMA})")
+    print(f"  - Aug preset: {config.AUG_PRESET}")
+
+    aug_preset = config.AUG_PRESET
+    if config.ANIMAL_TYPE.lower() == "dog" and aug_preset == "cat_phone":
+        aug_preset = "default"
+        print("⚠️  강아지 학습: AUG_PRESET 을 'default' 로 사용합니다.")
+
+    use_sampler = bool(config.USE_SAMPLER)
+    if config.ANIMAL_TYPE.lower() == "cat" and getattr(
+        config, "USE_SAMPLER_FOR_CAT", False
+    ):
+        use_sampler = True
+    boost_dis = config.SAMPLER_BOOST_DISEASE if use_sampler else None
+    print(
+        f"  - WeightedSampler: {'ON' if use_sampler else 'OFF'}"
+        + (f" (boost={boost_dis}×{config.SAMPLER_BOOST_FACTOR})" if use_sampler else "")
+    )
+
     print(f"\n📂 데이터 경로:")
     print(f"  - Train: {train_paths}")
     print(f"  - Val:   {val_paths}")
-    
-    # DataLoader 생성
+
     print(f"\n📊 데이터 로딩...")
     train_loader = create_dataloader(
         data_paths=train_paths,
@@ -268,37 +275,47 @@ def train():
         batch_size=config.BATCH_SIZE,
         img_size=config.IMG_SIZE,
         is_training=True,
-        num_workers=0,  # 4 → 0 (MPS에서 더 빠름)
-        use_sampler=config.USE_SAMPLER  # WeightedRandomSampler 사용
+        num_workers=0,
+        use_sampler=use_sampler,
+        aug_preset=aug_preset,
+        sampler_boost_disease=boost_dis,
+        sampler_boost_factor=config.SAMPLER_BOOST_FACTOR,
     )
-    
+
     val_loader = create_dataloader(
         data_paths=val_paths,
         animal_type=config.ANIMAL_TYPE,
         batch_size=config.BATCH_SIZE,
         img_size=config.IMG_SIZE,
         is_training=False,
-        num_workers=0,  # 4 → 0 (MPS에서 더 빠름)
-        use_sampler=False  # Validation은 sampler 미사용
+        num_workers=0,
+        use_sampler=False,
+        aug_preset="default",
     )
-    
-    # 모델 생성
+
     print(f"\n🔧 모델 생성...")
     model = create_model(animal_type=config.ANIMAL_TYPE, pretrained=True)
     model = model.to(device)
-    
+
     print(f"학습 가능 파라미터: {count_parameters(model):,}")
-    
-    # Loss, Optimizer, Scheduler
-    criterion = nn.CrossEntropyLoss()
+
+    diseases = model.get_disease_names()
+
+    criterion_dict = build_per_disease_losses(
+        train_loader.dataset,
+        diseases,
+        config.LOSS_TYPE,
+        device=device,
+        use_class_weights=config.USE_CLASS_WEIGHTS,
+        focal_gamma=config.FOCAL_GAMMA,
+    ).to(device)
+
     optimizer = optim.AdamW(
         model.parameters(),
         lr=config.LR,
-        weight_decay=config.WEIGHT_DECAY
+        weight_decay=config.WEIGHT_DECAY,
     )
     scheduler = CosineAnnealingLR(optimizer, T_max=config.EPOCHS)
-    
-    diseases = model.get_disease_names()
     
     # Wandb 초기화 (선택사항)
     if config.USE_WANDB:
@@ -314,22 +331,21 @@ def train():
     
     # 학습 루프
     print(f"\n🚀 학습 시작...\n")
-    
-    best_val_loss = float('inf')
+
+    best_val_loss = float("inf")
     patience_counter = 0
-    
+    save_path = ""
     for epoch in range(1, config.EPOCHS + 1):
         print(f"\nEpoch {epoch}/{config.EPOCHS}")
         print("-" * 60)
         
         # Train
         train_metrics = train_epoch(
-            model, train_loader, criterion, optimizer, device, diseases
+            model, train_loader, criterion_dict, optimizer, device, diseases
         )
-        
-        # Validation
+
         val_metrics = validate_epoch(
-            model, val_loader, criterion, device, diseases
+            model, val_loader, criterion_dict, device, diseases
         )
         
         # Scheduler step
@@ -390,7 +406,7 @@ def train():
     print("✅ 학습 완료!")
     print("=" * 60)
     print(f"\n📂 저장 위치:")
-    print(f"  - Best: {save_path}")
+    print(f"  - Best: {save_path or '(저장 없음)'}")
     print(f"  - Final: {final_path}")
     
     if config.USE_WANDB:
