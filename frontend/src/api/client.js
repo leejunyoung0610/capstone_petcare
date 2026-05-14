@@ -3,19 +3,32 @@ import axios from 'axios';
 /**
  * Backend API base URL.
  *
- * dev 서버 (vite) 가 /api, /uploads 를 백엔드(8001) 로 프록시하므로
- * 프론트는 항상 **같은 origin 의 상대 경로** 를 쓴다.
- *   - PC localhost:5173   → /api/...           → vite proxy → :8001
- *   - 휴대폰 172.x.x.x:5173 → /api/...           → vite proxy → :8001
- *   - ngrok https://xxx     → /api/...           → vite proxy → :8001
+ * dev 서버 (vite) 가 /api, /uploads 를 백엔드로 프록시하므로
+ * 기본은 **같은 origin 의 /api** (휴대폰 LAN: PC_IP:5173 → 프록시 → 백엔드).
  *
- * VITE_API_URL 환경변수가 있으면 그걸 우선 (배포/특수 환경).
+ * VITE_API_URL 을 `http://localhost:8001/api` 처럼 두면 **PC 브라우저에서는 편하지만**,
+ * 휴대폰에서 `http://192.168.x.x:5173` 으로 열면 `localhost` 가 폰 자신을 가리켜 API 가 전부 실패한다.
+ * → LAN 호스트로 접속한 경우 localhost/127.0.0.1 API URL 은 무시하고 `/api` 를 쓴다.
  */
 function detectBaseURL() {
   const envUrl = import.meta.env.VITE_API_URL?.toString().trim();
   if (envUrl) {
     const cleaned = envUrl.replace(/\/$/, '');
-    return cleaned.endsWith('/api') ? cleaned : `${cleaned}/api`;
+    const base = cleaned.endsWith('/api') ? cleaned : `${cleaned}/api`;
+    if (typeof window !== 'undefined') {
+      const h = window.location.hostname;
+      const onLanHost =
+        /^(192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])\.)/.test(h) || /\.local$/i.test(h);
+      const pointsToLoopback =
+        /localhost/i.test(base) || base.includes('127.0.0.1');
+      if (onLanHost && pointsToLoopback) {
+        console.warn(
+          '[GANADI] VITE_API_URL이 루프백(localhost)입니다. 휴대폰 LAN 접속 시 /api(프록시)로 전환합니다.',
+        );
+        return '/api';
+      }
+    }
+    return base;
   }
   return '/api';
 }
@@ -64,12 +77,30 @@ const processQueue = (error, token = null) => {
   failedQueue = [];
 };
 
+/** 로그인/회원가입 등은 401 그대로 넘겨 화면에 detail 을 표시해야 함 (refresh·리다이렉트 금지) */
+function skipRefreshOn401(config) {
+  const url = config?.url ?? '';
+  return (
+    url.includes('/auth/user/login') ||
+    url.includes('/auth/vet/login') ||
+    url.includes('/auth/user/register') ||
+    url.includes('/auth/vet/register') ||
+    url.includes('/auth/vet/register-with-docs') ||
+    url.includes('/auth/refresh') ||
+    url.includes('/users/me/password')
+  );
+}
+
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
 
-    if (error.response?.status === 401 && !originalRequest._retry && !originalRequest.url?.includes('/users/me/password')) {
+    if (
+      error.response?.status === 401 &&
+      !originalRequest._retry &&
+      !skipRefreshOn401(originalRequest)
+    ) {
       // 이미 refresh 중이면 대기
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
@@ -90,7 +121,15 @@ apiClient.interceptors.response.use(
       // refresh 토큰 없으면 바로 로그아웃
       if (!refreshToken) {
         localStorage.removeItem('token');
-        window.location.href = '/login';
+        const path = window.location.pathname || '';
+        const authPages =
+          path.startsWith('/login') ||
+          path.startsWith('/register') ||
+          path.startsWith('/vet/register') ||
+          path.startsWith('/auth/kakao');
+        if (!authPages) {
+          window.location.href = '/login';
+        }
         return Promise.reject(error);
       }
 

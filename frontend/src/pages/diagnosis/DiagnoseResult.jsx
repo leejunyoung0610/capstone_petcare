@@ -2,11 +2,12 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router';
 import { format, addHours } from 'date-fns';
 import clsx from 'clsx';
-import { Star, MapPin } from 'lucide-react';
+import { Star, MapPin, AlertTriangle, FileText, ChevronDown, ChevronUp, X, ShieldCheck, Stethoscope, AlertCircle, ClipboardList } from 'lucide-react';
 import useDiagnosisStore from '../../stores/diagnosisStore';
 import Button from '../../components/ui/Button';
 import { ButtonCore } from '../../components/ui/button-core';
 import { getRecommendedVets } from '../../api/vets';
+import { getDiagnosisReport } from '../../api/diagnosis';
 
 export default function DiagnoseResult() {
   const { id } = useParams();
@@ -18,10 +19,46 @@ export default function DiagnoseResult() {
     return () => clearError();
   }, [id]);
 
+  const [pdfBusy, setPdfBusy] = useState(false);
+  const [pdfError, setPdfError] = useState(null);
   const handleDownloadPDF = async () => {
+    if (pdfBusy) return;
+    setPdfBusy(true);
+    setPdfError(null);
     try {
       await downloadPDF(parseInt(id));
-    } catch (err) { }
+    } catch (err) {
+      setPdfError(err?.message || 'PDF 다운로드에 실패했습니다.');
+    } finally {
+      setPdfBusy(false);
+    }
+  };
+
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportData, setReportData] = useState(null);
+  const [reportLoading, setReportLoading] = useState(false);
+  const [reportError, setReportError] = useState(null);
+
+  const handleViewReport = async () => {
+    if (reportOpen && reportData) {
+      setReportOpen(false);
+      return;
+    }
+    if (reportData) {
+      setReportOpen(true);
+      return;
+    }
+    setReportLoading(true);
+    setReportError(null);
+    try {
+      const data = await getDiagnosisReport(parseInt(id));
+      setReportData(data);
+      setReportOpen(true);
+    } catch (err) {
+      setReportError(err?.response?.data?.detail || err?.message || '보고서를 불러올 수 없습니다.');
+    } finally {
+      setReportLoading(false);
+    }
   };
 
   if (loading && !currentDiagnosis) {
@@ -59,6 +96,20 @@ export default function DiagnoseResult() {
       <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-500">
         아래 수치는 AI 참고용입니다. 눈에 이상이 보이면 지체 없이 동물병원에 방문하세요.
       </p>
+
+      <div className="mt-6 flex gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+        <AlertTriangle className="h-5 w-5 flex-shrink-0 text-amber-600" aria-hidden />
+        <div className="space-y-2 leading-relaxed">
+          <p className="font-semibold text-amber-900">면책 및 안내</p>
+          <p>
+            본 화면은 질병 진단·치료 결정을 대체하지 않습니다. AI는 학습 데이터와 알고리즘 한계로 오판·누락이 발생할 수
+            있으며, 동물병원 방문과 수의사 진단이 최종 기준입니다.
+          </p>
+          <p className="text-xs text-amber-900/80">
+            법적 성격: 사전 스크리닝 및 정보 제공 목적(수의사법 등 관련 규정 준수 필요 시 별도 검토).
+          </p>
+        </div>
+      </div>
 
       <div className="mt-8">
         {/* 결과 요약 */}
@@ -126,20 +177,40 @@ export default function DiagnoseResult() {
 
             {/* 액션 버튼 */}
             <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-3">
-              <Button variant="primary" onClick={handleDownloadPDF} loading={loading} className="w-full">
-                📄 진단 보고서 PDF 다운로드
+              <Button
+                variant="primary"
+                onClick={handleViewReport}
+                loading={reportLoading}
+                className="w-full"
+              >
+                <FileText className="mr-1.5 h-4 w-4 inline" />
+                {reportOpen ? '보고서 닫기' : 'AI 보고서 보기'}
               </Button>
+              {reportError && (
+                <p className="text-xs text-red-500 text-center">{reportError}</p>
+              )}
               <ButtonCore variant="secondary" asChild className="w-full">
                 <Link to="/diagnosis/history" className="inline-flex w-full justify-center">
-                  📋 히스토리 보기
+                  히스토리 보기
                 </Link>
               </ButtonCore>
               <ButtonCore variant="secondary" asChild className="w-full">
                 <Link to="/diagnosis/new" className="inline-flex w-full justify-center">
-                  🔄 다시 검사하기
+                  다시 검사하기
                 </Link>
               </ButtonCore>
             </div>
+
+            {/* 인앱 보고서 뷰 */}
+            {reportOpen && reportData?.report && (
+              <InAppReport
+                data={reportData}
+                onClose={() => setReportOpen(false)}
+                onDownloadPDF={handleDownloadPDF}
+                pdfBusy={pdfBusy}
+                pdfError={pdfError}
+              />
+            )}
           </div>
 
           <div className="space-y-4">
@@ -233,6 +304,164 @@ export default function DiagnoseResult() {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+/** Claude AI가 생성한 보고서를 앱 안에서 보여주는 카드 */
+function InAppReport({ data, onClose, onDownloadPDF, pdfBusy, pdfError }) {
+  const { report, pet_name, animal_type, main_disease, main_confidence, is_normal, created_at } = data;
+  const urgencyColor = {
+    '즉시 방문': 'bg-red-100 text-red-700 border-red-200',
+    '빠른 시일 내 방문': 'bg-amber-100 text-amber-700 border-amber-200',
+    '정기검진': 'bg-emerald-100 text-emerald-700 border-emerald-200',
+  };
+
+  return (
+    <div className="relative rounded-xl border border-blue-200 bg-gradient-to-b from-blue-50 to-white shadow-sm overflow-hidden">
+      {/* PDF 생성 오버레이 */}
+      {pdfBusy && (
+        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-white/80 backdrop-blur-sm">
+          <div className="h-10 w-10 animate-spin rounded-full border-[3px] border-blue-200 border-t-blue-600" />
+          <p className="mt-3 text-sm font-medium text-slate-700">PDF 생성 중...</p>
+          <p className="mt-1 text-xs text-slate-400">최대 20초 정도 소요됩니다</p>
+        </div>
+      )}
+      {/* 헤더 */}
+      <div className="flex items-center justify-between border-b border-blue-100 bg-blue-50 px-5 py-3">
+        <div className="flex items-center gap-2">
+          <Stethoscope className="h-5 w-5 text-blue-600" />
+          <h3 className="font-bold text-slate-900">AI 진단 보고서</h3>
+        </div>
+        <button onClick={onClose} className="rounded-full p-1 hover:bg-blue-100">
+          <X className="h-4 w-4 text-slate-500" />
+        </button>
+      </div>
+
+      <div className="space-y-4 p-5">
+        {/* 환자 정보 */}
+        <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+          <span className="rounded-md bg-slate-100 px-2 py-0.5 font-medium text-slate-700">
+            {pet_name}
+          </span>
+          <span className="rounded-md bg-slate-100 px-2 py-0.5">
+            {animal_type === 'dog' ? '강아지' : '고양이'}
+          </span>
+          {created_at && (
+            <span>{format(addHours(new Date(created_at), 9), 'yyyy.MM.dd HH:mm')}</span>
+          )}
+        </div>
+
+        {/* 방문 권고 */}
+        <div className={clsx(
+          'flex items-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-semibold',
+          urgencyColor[report.visit_urgency] || 'bg-slate-100 text-slate-700 border-slate-200'
+        )}>
+          {report.vet_required ? (
+            <AlertCircle className="h-4 w-4 flex-shrink-0" />
+          ) : (
+            <ShieldCheck className="h-4 w-4 flex-shrink-0" />
+          )}
+          병원 방문: {report.visit_urgency}
+        </div>
+
+        {/* 종합 소견 */}
+        {report.summary && (
+          <div>
+            <h4 className="mb-1.5 flex items-center gap-1.5 text-sm font-bold text-slate-800">
+              <ClipboardList className="h-4 w-4 text-blue-500" />
+              종합 소견
+            </h4>
+            <p className="rounded-lg bg-white border border-slate-100 p-3 text-sm leading-relaxed text-slate-700">
+              {report.summary}
+            </p>
+          </div>
+        )}
+
+        {/* 질환별 분석 */}
+        {report.disease_analysis && Object.keys(report.disease_analysis).length > 0 && (
+          <div>
+            <h4 className="mb-2 flex items-center gap-1.5 text-sm font-bold text-slate-800">
+              <Stethoscope className="h-4 w-4 text-blue-500" />
+              질환별 상세 분석
+            </h4>
+            <div className="space-y-2">
+              {Object.entries(report.disease_analysis).map(([disease, analysis]) => (
+                <DiseaseAnalysisCard key={disease} disease={disease} analysis={analysis} />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* 주의사항 */}
+        {report.precautions?.length > 0 && (
+          <div>
+            <h4 className="mb-1.5 flex items-center gap-1.5 text-sm font-bold text-slate-800">
+              <AlertTriangle className="h-4 w-4 text-amber-500" />
+              보호자 주의사항
+            </h4>
+            <ul className="space-y-1.5">
+              {report.precautions.map((text, i) => (
+                <li key={i} className="flex gap-2 rounded-lg bg-white border border-slate-100 p-3 text-sm text-slate-700">
+                  <span className="mt-0.5 text-amber-500">•</span>
+                  <span>{text}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {/* PDF 다운로드 */}
+        <div className="border-t border-slate-100 pt-3">
+          <button
+            onClick={(e) => { e.stopPropagation(); onDownloadPDF?.(); }}
+            disabled={pdfBusy}
+            className="flex w-full items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 transition"
+          >
+            {pdfBusy ? (
+              <>
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-slate-400 border-t-transparent" />
+                PDF 생성 중...
+              </>
+            ) : (
+              <>
+                <FileText className="h-4 w-4" />
+                PDF로 저장 / 공유
+              </>
+            )}
+          </button>
+          {pdfError && (
+            <p className="mt-1 text-xs text-red-500 text-center">{pdfError}</p>
+          )}
+        </div>
+
+        <p className="text-[11px] text-slate-400 text-center pt-2">
+          본 보고서는 AI(Claude)가 생성한 참고 자료이며, 수의사 진단을 대체하지 않습니다.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/** 질환별 분석 카드 (접힘/펼침) */
+function DiseaseAnalysisCard({ disease, analysis }) {
+  const [open, setOpen] = useState(false);
+  const content = typeof analysis === 'string' ? analysis : analysis?.description || analysis?.detail || JSON.stringify(analysis);
+
+  return (
+    <div className="rounded-lg border border-slate-100 bg-white overflow-hidden">
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex w-full items-center justify-between px-3 py-2.5 text-left text-sm font-medium text-slate-800 hover:bg-slate-50"
+      >
+        <span>{disease}</span>
+        {open ? <ChevronUp className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />}
+      </button>
+      {open && (
+        <div className="border-t border-slate-50 px-3 py-2.5 text-sm leading-relaxed text-slate-600">
+          {content}
+        </div>
+      )}
     </div>
   );
 }

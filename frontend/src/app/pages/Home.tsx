@@ -1,6 +1,121 @@
-import { Link } from "react-router";
+import { useEffect, useRef, useState } from "react";
+import { Link, NavLink, useLocation } from "react-router";
 import { Header } from "../components/Header";
-import { Upload, Search, BookOpen, BarChart3, Shield, Sparkles } from "lucide-react";
+import {
+  Upload, Search, BookOpen, BarChart3, Shield, Sparkles,
+  Home as HomeIcon, PawPrint, MapPin, User,
+} from "lucide-react";
+
+function useScrollDirection() {
+  const [visible, setVisible] = useState(false);
+  const lastY = useRef(0);
+  const ticking = useRef(false);
+
+  useEffect(() => {
+    const onScroll = () => {
+      if (ticking.current) return;
+      ticking.current = true;
+      requestAnimationFrame(() => {
+        const y = window.scrollY;
+        if (y > 200) {
+          setVisible(y < lastY.current || y > 400);
+        } else {
+          setVisible(false);
+        }
+        lastY.current = y;
+        ticking.current = false;
+      });
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  return visible;
+}
+
+function HomeTabBar() {
+  const show = useScrollDirection();
+  const { pathname } = useLocation();
+  const aiActive = pathname.startsWith("/diagnosis") || pathname.startsWith("/upload") || pathname.startsWith("/result");
+
+  const tabs = [
+    { to: "/dashboard", icon: HomeIcon, label: "홈" },
+    { to: "/pets", icon: PawPrint, label: "반려동물" },
+  ];
+  const tabsRight = [
+    { to: "/vets", icon: MapPin, label: "병원" },
+    { to: "/mypage", icon: User, label: "마이" },
+  ];
+
+  return (
+    <nav
+      className={`fixed bottom-0 left-0 right-0 z-50 transition-transform duration-300 lg:hidden ${
+        show ? "translate-y-0" : "translate-y-full"
+      }`}
+      style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
+    >
+      <div className="relative">
+        {/* 노치 배경 — 버튼 뒤에 흰 원을 깔아 탭바와 자연스럽게 이어지게 */}
+        <div className="absolute left-1/2 -top-[31px] z-[1] h-[68px] w-[68px] -translate-x-1/2 rounded-full bg-white" />
+
+        {/* 플로팅 AI 버튼 */}
+        <div className="pointer-events-none absolute inset-x-0 -top-[30px] z-[2] flex justify-center">
+          <NavLink
+            to="/diagnosis/new"
+            aria-label="AI 분석"
+            className={`pointer-events-auto flex h-[60px] w-[60px] items-center justify-center rounded-full shadow-lg shadow-blue-500/30 transition active:scale-95 ${
+              aiActive
+                ? "bg-gradient-to-br from-blue-600 to-violet-600 text-white"
+                : "bg-gradient-to-br from-blue-500 to-violet-500 text-white hover:from-blue-600 hover:to-violet-600"
+            }`}
+          >
+            <Sparkles className="h-6 w-6" />
+          </NavLink>
+        </div>
+
+        <div className="relative shadow-[0_-1px_3px_rgba(0,0,0,0.06)] bg-white/95 backdrop-blur-md">
+          <div className="mx-auto grid max-w-md grid-cols-5 items-end px-2 pt-2 pb-1.5">
+            {tabs.map(({ to, icon: Icon, label }) => (
+              <NavLink
+                key={to}
+                to={to}
+                className={({ isActive }) =>
+                  `flex flex-col items-center gap-0.5 py-1 text-xs transition ${
+                    isActive ? "text-blue-600" : "text-slate-400 active:text-blue-600"
+                  }`
+                }
+              >
+                <Icon className="h-5 w-5" />
+                <span className="text-[10px] font-medium">{label}</span>
+              </NavLink>
+            ))}
+
+            <div className="flex items-end justify-center pb-0.5">
+              <span className={`text-[10px] font-medium ${aiActive ? "text-blue-600" : "text-slate-400"}`}>
+                AI 분석
+              </span>
+            </div>
+
+            {tabsRight.map(({ to, icon: Icon, label }) => (
+              <NavLink
+                key={to}
+                to={to}
+                className={({ isActive }) =>
+                  `flex flex-col items-center gap-0.5 py-1 text-xs transition ${
+                    isActive ? "text-blue-600" : "text-slate-400 active:text-blue-600"
+                  }`
+                }
+              >
+                <Icon className="h-5 w-5" />
+                <span className="text-[10px] font-medium">{label}</span>
+              </NavLink>
+            ))}
+          </div>
+        </div>
+      </div>
+    </nav>
+  );
+}
 
 export function Home() {
   return (
@@ -8,39 +123,33 @@ export function Home() {
       <Header />
 
       {/* 히어로 섹션 */}
-      <section className="bg-gradient-to-br from-blue-50 to-indigo-100 py-20">
-        <div className="max-w-6xl mx-auto px-4">
-          <div className="grid md:grid-cols-2 gap-12 items-center">
-            <div>
-              <h1 className="text-4xl font-bold mb-6 text-slate-900 leading-tight">
-                반려동물 안구 건강,
-                <br />
-                <span className="text-blue-600">AI로 미리 확인하세요</span>
-              </h1>
-              <p className="text-lg text-slate-600 mb-8 leading-relaxed">
-                스마트폰 사진 한 장으로 강아지·고양이 안구 질환을
-                사전 스크리닝하고 수의사 소견을 받아보세요
-              </p>
-              <div className="flex gap-3 flex-wrap">
-                <Link to="/upload">
-                  <button className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700">
-                    <Upload className="w-4 h-4" />
-                    지금 분석하기
-                  </button>
-                </Link>
-                <Link to="/encyclopedia">
-                  <button className="px-6 py-3 border border-slate-300 bg-white text-slate-700 rounded-xl text-sm font-semibold hover:bg-slate-50">
-                    질환백과 보기
-                  </button>
-                </Link>
-              </div>
-            </div>
-
-            <div className="bg-white border border-slate-200 rounded-2xl h-80 flex flex-col items-center justify-center text-slate-400 shadow-sm">
-              <div className="text-6xl mb-4">🐾</div>
-              <p className="text-sm">반려동물 눈 검사 이미지</p>
-              <p className="text-xs text-slate-300 mt-1">AI 스캔 효과</p>
-            </div>
+      <section className="bg-gradient-to-br from-blue-50 to-indigo-100 py-14 sm:py-20">
+        <div className="max-w-6xl mx-auto px-4 text-center">
+          <div className="inline-flex items-center gap-2 rounded-full bg-blue-100/70 px-4 py-1.5 text-xs font-semibold text-blue-700 mb-5">
+            <Sparkles className="h-3.5 w-3.5" />
+            AI 멀티태스크 · 15종 동시 스크리닝
+          </div>
+          <h1 className="text-3xl sm:text-4xl font-bold mb-4 text-slate-900 leading-tight">
+            반려동물 안구 건강,
+            <br />
+            <span className="text-blue-600">AI로 미리 확인하세요</span>
+          </h1>
+          <p className="text-base sm:text-lg text-slate-600 mb-8 leading-relaxed max-w-xl mx-auto">
+            스마트폰 사진 한 장으로 강아지·고양이 안구 질환을
+            사전 스크리닝하고 수의사 소견을 받아보세요
+          </p>
+          <div className="flex gap-3 flex-wrap justify-center">
+            <Link to="/upload">
+              <button className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 shadow-md shadow-blue-500/20">
+                <Upload className="w-4 h-4" />
+                지금 분석하기
+              </button>
+            </Link>
+            <Link to="/encyclopedia">
+              <button className="px-6 py-3 border border-slate-300 bg-white text-slate-700 rounded-xl text-sm font-semibold hover:bg-slate-50">
+                질환백과 보기
+              </button>
+            </Link>
           </div>
         </div>
       </section>
@@ -157,7 +266,7 @@ export function Home() {
       </section>
 
       {/* 푸터 */}
-      <footer className="bg-slate-900 text-slate-400 py-12">
+      <footer className="bg-slate-900 text-slate-400 py-12 pb-24 lg:pb-12">
         <div className="max-w-6xl mx-auto px-4">
           <div className="grid md:grid-cols-4 gap-8 mb-8">
             <div>
@@ -177,6 +286,8 @@ export function Home() {
               <ul className="space-y-2 text-sm">
                 <li><Link to="/announcements" className="hover:text-white">공지사항</Link></li>
                 <li><Link to="/announcements" className="hover:text-white">FAQ</Link></li>
+                <li><Link to="/legal/privacy" className="hover:text-white">개인정보 처리방침</Link></li>
+                <li><Link to="/legal/terms" className="hover:text-white">이용약관</Link></li>
               </ul>
             </div>
             <div>
@@ -192,6 +303,8 @@ export function Home() {
           </div>
         </div>
       </footer>
+
+      <HomeTabBar />
     </div>
   );
 }

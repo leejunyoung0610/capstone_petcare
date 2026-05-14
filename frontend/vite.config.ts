@@ -79,16 +79,18 @@ export default defineConfig({
     },
   },
   server: {
-    host: true, // LAN 휴대폰 접속 허용 (0.0.0.0)
+    // true 와 동일하지만 Mac/LAN 에서 의도가 분명하도록 고정
+    host: '0.0.0.0',
+    port: 5173,
     // dev 서버에서 /api, /uploads 를 백엔드로 프록시 — frontend 와 backend 를
     // 같은 origin 에서 쓰는 효과. ngrok 1 개로 둘 다 노출 가능.
     proxy: {
       '/api': {
-        target: 'http://localhost:8001',
+        target: 'http://127.0.0.1:8001',
         changeOrigin: true,
       },
       '/uploads': {
-        target: 'http://localhost:8001',
+        target: 'http://127.0.0.1:8001',
         changeOrigin: true,
       },
     },

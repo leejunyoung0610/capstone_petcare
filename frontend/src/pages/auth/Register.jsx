@@ -14,6 +14,8 @@ export default function Register() {
     phone: '',
   });
   const [errors, setErrors] = useState({});
+  const [agreedTerms, setAgreedTerms] = useState(false);
+  const [agreedPrivacy, setAgreedPrivacy] = useState(false);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -31,6 +33,8 @@ export default function Register() {
     if (!formData.name.trim()) newErrors.name = '이름을 입력하세요.';
     if (!formData.phone.match(/^010-?\d{4}-?\d{4}$/))
       newErrors.phone = '올바른 전화번호 형식이 아닙니다.';
+    if (!agreedTerms) newErrors.terms = '이용약관에 동의해 주세요.';
+    if (!agreedPrivacy) newErrors.privacy = '개인정보 처리방침에 동의해 주세요.';
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -100,6 +104,45 @@ export default function Register() {
               </div>
             ))}
 
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 space-y-3">
+              <label className="flex items-start gap-2 cursor-pointer text-sm text-slate-700">
+                <input
+                  type="checkbox"
+                  checked={agreedTerms}
+                  onChange={(e) => {
+                    setAgreedTerms(e.target.checked);
+                    setErrors((p) => ({ ...p, terms: '' }));
+                  }}
+                  className="mt-0.5 rounded border-slate-300"
+                />
+                <span>
+                  <Link to="/legal/terms" target="_blank" rel="noopener noreferrer" className="font-medium text-blue-600 hover:underline">
+                    이용약관
+                  </Link>
+                  에 동의합니다 (필수)
+                </span>
+              </label>
+              {errors.terms && <p className="text-xs text-red-500">{errors.terms}</p>}
+              <label className="flex items-start gap-2 cursor-pointer text-sm text-slate-700">
+                <input
+                  type="checkbox"
+                  checked={agreedPrivacy}
+                  onChange={(e) => {
+                    setAgreedPrivacy(e.target.checked);
+                    setErrors((p) => ({ ...p, privacy: '' }));
+                  }}
+                  className="mt-0.5 rounded border-slate-300"
+                />
+                <span>
+                  <Link to="/legal/privacy" target="_blank" rel="noopener noreferrer" className="font-medium text-blue-600 hover:underline">
+                    개인정보 처리방침
+                  </Link>
+                  에 동의합니다 (필수)
+                </span>
+              </label>
+              {errors.privacy && <p className="text-xs text-red-500">{errors.privacy}</p>}
+            </div>
+
             <button
               type="submit"
               className="w-full py-3 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 disabled:opacity-50"
@@ -117,10 +160,18 @@ export default function Register() {
           </div>
         </div>
 
-        <div className="mt-6 text-center">
-          <Link to="/" className="text-sm text-slate-400 hover:text-slate-900">
+        <div className="mt-6 text-center space-y-2">
+          <Link to="/" className="block text-sm text-slate-400 hover:text-slate-900">
             ← 메인으로 돌아가기
           </Link>
+          <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs text-slate-400">
+            <Link to="/legal/privacy" className="hover:text-slate-700 underline-offset-2 hover:underline">
+              개인정보 처리방침
+            </Link>
+            <Link to="/legal/terms" className="hover:text-slate-700 underline-offset-2 hover:underline">
+              이용약관
+            </Link>
+          </div>
         </div>
       </div>
     </div>

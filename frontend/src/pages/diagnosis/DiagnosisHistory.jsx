@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getMyDiagnoses } from '../../api/diagnosis';
+import { getMyDiagnoses, deleteDiagnosis } from '../../api/diagnosis';
+import { Trash2 } from 'lucide-react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, Legend
@@ -11,6 +12,8 @@ export default function DiagnosisHistory() {
   const [histories, setHistories] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     getMyDiagnoses()
@@ -18,6 +21,20 @@ export default function DiagnosisHistory() {
       .catch(() => setError('진단 이력을 불러오는데 실패했습니다.'))
       .finally(() => setIsLoading(false));
   }, []);
+
+  const handleDelete = async () => {
+    if (!deleteTarget || deleting) return;
+    setDeleting(true);
+    try {
+      await deleteDiagnosis(deleteTarget);
+      setHistories((prev) => prev.filter((h) => h.id !== deleteTarget));
+    } catch {
+      alert('삭제에 실패했습니다.');
+    } finally {
+      setDeleting(false);
+      setDeleteTarget(null);
+    }
+  };
 
   const getTrend = (current, previous) => {
     if (!previous || previous.is_normal) return null;
@@ -106,12 +123,24 @@ export default function DiagnosisHistory() {
                     <span className="font-bold text-slate-900">
                       {item.pet_name}
                     </span>
-                    <span className="text-xs text-slate-400">
-                      {new Date(item.created_at).toLocaleDateString()}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-slate-400">
+                        {new Date(item.created_at).toLocaleDateString()}
+                      </span>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDeleteTarget(item.id);
+                        }}
+                        className="rounded-md p-1.5 text-slate-300 hover:bg-red-50 hover:text-red-500 transition"
+                        aria-label="삭제"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     {item.is_normal ? (
                       <span className="bg-green-100 text-green-700 text-xs px-3 py-1 rounded-full font-medium">
                         정상
@@ -119,6 +148,11 @@ export default function DiagnosisHistory() {
                     ) : (
                       <span className="bg-red-100 text-red-700 text-xs px-3 py-1 rounded-full font-medium">
                         {item.main_disease}
+                      </span>
+                    )}
+                    {item.report_data && (
+                      <span className="bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full font-medium">
+                        보고서
                       </span>
                     )}
                     {item.main_confidence && (
@@ -143,6 +177,35 @@ export default function DiagnosisHistory() {
             })}
           </div>
         </>
+      )}
+      {/* 삭제 확인 모달 */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-xs rounded-2xl bg-white p-6 shadow-xl text-center">
+            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
+              <Trash2 className="h-6 w-6 text-red-500" />
+            </div>
+            <h3 className="text-lg font-bold text-slate-900 mb-1">진단 이력 삭제</h3>
+            <p className="text-sm text-slate-500 mb-5">
+              삭제하면 보고서와 함께 복구할 수 없습니다.
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setDeleteTarget(null)}
+                className="flex-1 rounded-lg border border-slate-200 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 transition"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="flex-1 rounded-lg bg-red-500 py-2.5 text-sm font-medium text-white hover:bg-red-600 disabled:opacity-50 transition"
+              >
+                {deleting ? '삭제 중...' : '삭제'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </main>
   );

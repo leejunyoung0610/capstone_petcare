@@ -190,72 +190,68 @@ export function MyPage() {
 
         <div className="max-w-5xl mx-auto px-4 py-12">
           {/* 프로필 헤더 */}
-          <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm mb-6">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div
-                  className="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center text-4xl flex-shrink-0 cursor-pointer relative overflow-hidden"
-                  onClick={() => profileImageRef.current?.click()}
-                >
-                  {profileImagePreview ? (
-                    <img src={profileImagePreview} alt="프로필" className="w-full h-full object-cover" />
-                  ) : (
-                    <span>🐾</span>
-                  )}
-                  <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 hover:opacity-100 transition">
-                    <Camera className="w-6 h-6 text-white" />
-                  </div>
-                  <input
-                    ref={profileImageRef}
-                    type="file"
-                    accept="image/jpeg,image/png"
-                    className="hidden"
-                    onChange={handleProfileImageChange}
-                  />
+          <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm mb-6">
+            <div className="flex items-center gap-4">
+              <div
+                className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center text-3xl flex-shrink-0 cursor-pointer relative overflow-hidden"
+                onClick={() => profileImageRef.current?.click()}
+              >
+                {profileImagePreview ? (
+                  <img src={profileImagePreview} alt="프로필" className="w-full h-full object-cover" />
+                ) : (
+                  <span>🐾</span>
+                )}
+                <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 hover:opacity-100 transition">
+                  <Camera className="w-5 h-5 text-white" />
                 </div>
-                <div>
-                  <h1 className="text-xl font-bold text-slate-900 mb-1">
-                    {profile?.nickname || "로딩 중..."} 님
-                  </h1>
-                  <p className="text-sm text-slate-500 mb-2">{profile?.email}</p>
-                  <div className="flex gap-4 text-sm text-slate-500">
-                    <span className="flex items-center gap-1">
-                      <PawPrint className="w-4 h-4" />
-                      반려동물 {pets.length}마리
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <MessageCircle className="w-4 h-4" />
-                      소견 {opinions.length}회
-                    </span>
-                  </div>
+                <input
+                  ref={profileImageRef}
+                  type="file"
+                  accept="image/jpeg,image/png"
+                  className="hidden"
+                  onChange={handleProfileImageChange}
+                />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h1 className="text-lg font-bold text-slate-900 truncate">
+                  {profile?.nickname || "로딩 중..."} 님
+                </h1>
+                <p className="text-sm text-slate-500 truncate">{profile?.email}</p>
+                <div className="flex gap-3 mt-1 text-xs text-slate-400">
+                  <span className="flex items-center gap-1">
+                    <PawPrint className="w-3.5 h-3.5" />
+                    {pets.length}마리
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Activity className="w-3.5 h-3.5" />
+                    진단 {diagnoses.length}회
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <MessageCircle className="w-3.5 h-3.5" />
+                    소견 {opinions.length}회
+                  </span>
                 </div>
               </div>
-              <button
-                onClick={() => setActiveTab("settings")}
-                className="flex flex-col items-center gap-1 px-3 py-2 border border-slate-300 rounded-lg text-xs text-slate-600 hover:bg-slate-50 flex-shrink-0"
-              >
-                <Settings className="w-4 h-4" />
-                설정
-              </button>
             </div>
           </div>
 
           {/* 탭 */}
-          <div className="flex gap-1 mb-6 bg-slate-100 p-1 rounded-xl">
+          <div className="flex gap-1 mb-6 bg-slate-100 p-1 rounded-xl overflow-x-auto">
             {[
-              { key: "pets", label: "반려동물 관리", icon: PawPrint },
+              { key: "pets", label: "반려동물", icon: PawPrint },
               { key: "history", label: "진단 이력", icon: Activity },
-              { key: "opinions", label: "수의사 소견", icon: MessageCircle },
+              { key: "opinions", label: "소견", icon: MessageCircle },
+              { key: "settings", label: "설정", icon: Settings },
             ].map((tab) => (
               <button
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key as any)}
-                className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition-colors ${activeTab === tab.key
+                className={`flex-1 flex items-center justify-center gap-1 py-2.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${activeTab === tab.key
                   ? "bg-white text-slate-900 shadow-sm"
                   : "text-slate-500 hover:text-slate-700"
                   }`}
               >
-                <tab.icon className="w-4 h-4" />
+                <tab.icon className="w-3.5 h-3.5" />
                 {tab.label}
               </button>
             ))}

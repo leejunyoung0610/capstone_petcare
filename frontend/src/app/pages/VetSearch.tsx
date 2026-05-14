@@ -11,8 +11,11 @@ import {
   ShieldCheck,
   Loader2,
   RefreshCw,
+  Copy,
+  ExternalLink,
+  X,
 } from "lucide-react";
-import { matchHospitalsWithGanadi } from "../../api/vets";
+import { matchHospitalsWithGanadi, listRegisteredVets } from "../../api/vets";
 import { loadKakaoMapsSdk } from "../../lib/kakaoMap";
 
 /**
@@ -81,6 +84,8 @@ export function VetSearch() {
   );
 
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
+  const [ganadiHospitals, setGanadiHospitals] = useState<Hospital[]>([]);
+  const [ganadiLoaded, setGanadiLoaded] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -301,9 +306,47 @@ export function VetSearch() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // ---------- GANADI 인증 병원 전체 목록 (토글 ON 시 1회 로드) ----------
+  useEffect(() => {
+    if (!onlyGanadi || ganadiLoaded) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        setLoading(true);
+        const vets = await listRegisteredVets({ limit: 200 });
+        if (cancelled) return;
+        const mapped: Hospital[] = vets.map((v: any) => ({
+          place_id: `ganadi-${v.id}`,
+          place_name: v.hospital_name || v.name,
+          address: v.address || null,
+          road_address: v.address || null,
+          phone: v.phone || null,
+          x: 0,
+          y: 0,
+          distance_m: null,
+          is_ganadi: true,
+          vet_id: v.id,
+          vet_name: v.name,
+          specialty: v.specialty || null,
+          business_hours: v.business_hours || null,
+          rating: v.rating ?? null,
+          review_count: v.review_count ?? 0,
+        }));
+        setGanadiHospitals(mapped);
+        setGanadiLoaded(true);
+      } catch (e) {
+        console.error("[VetSearch] GANADI 인증 병원 로드 실패:", e);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [onlyGanadi, ganadiLoaded]);
+
   // ---------- 정렬/필터링된 결과 ----------
   const visibleHospitals = useMemo(() => {
-    let arr = hospitals.filter((h) => {
+    const source = onlyGanadi ? ganadiHospitals : hospitals;
+    let arr = source.filter((h) => {
       if (onlyGanadi && !h.is_ganadi) return false;
       return true;
     });
@@ -319,7 +362,7 @@ export function VetSearch() {
       return (a.distance_m ?? Infinity) - (b.distance_m ?? Infinity);
     });
     return arr;
-  }, [hospitals, sortKey, onlyGanadi]);
+  }, [hospitals, ganadiHospitals, sortKey, onlyGanadi]);
 
   // ---------- 지도 마커 갱신 ----------
   useEffect(() => {
@@ -535,7 +578,9 @@ export function VetSearch() {
 
             {!loading && visibleHospitals.length === 0 && (
               <div className="rounded-xl border border-slate-200 bg-white p-6 text-center text-sm text-slate-500 sm:p-10">
-                반경 {(SEARCH_RADIUS_M / 1000).toFixed(0)}km 안에서 동물병원을 찾지 못했어요.
+                {onlyGanadi
+                  ? "등록된 GANADI 인증 병원이 아직 없습니다."
+                  : `반경 ${(SEARCH_RADIUS_M / 1000).toFixed(0)}km 안에서 동물병원을 찾지 못했어요.`}
               </div>
             )}
 
@@ -571,6 +616,31 @@ function HospitalCard({
   active: boolean;
   onClick: () => void;
 }) {
+  const [showSheet, setShowSheet] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const address = hospital.road_address || hospital.address || "";
+  const kakaoUrl = `https://map.kakao.com/link/to/${encodeURIComponent(hospital.place_name)},${hospital.y},${hospital.x}`;
+
+  const handleCopy = async () => {
+    const text = `${hospital.place_name} ${address}`.trim();
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      /* fallback for older browsers */
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
   const distanceLabel =
     hospital.distance_m == null
       ? null
@@ -579,108 +649,167 @@ function HospitalCard({
         : `${Math.round(hospital.distance_m)}m`;
 
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`block w-full rounded-xl border bg-white p-3.5 text-left shadow-sm transition-all hover:border-blue-300 hover:shadow sm:p-5 ${
-        active ? "border-blue-500 ring-1 ring-blue-200" : "border-slate-200"
-      }`}
-    >
-      <div className="flex gap-3 sm:gap-4">
-        <div
-          className={`flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl sm:h-14 sm:w-14 ${
-            hospital.is_ganadi
-              ? "bg-gradient-to-br from-blue-100 to-blue-200 text-blue-700"
-              : "bg-slate-100 text-slate-400"
-          }`}
-        >
-          <Stethoscope className="h-5 w-5 sm:h-6 sm:w-6" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="mb-1 flex flex-wrap items-center gap-2">
-            <h3 className="truncate font-bold text-slate-900">{hospital.place_name}</h3>
-            {hospital.is_ganadi && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-700">
-                <ShieldCheck className="h-3 w-3" /> GANADI 인증
-              </span>
-            )}
+    <>
+      <button
+        type="button"
+        onClick={onClick}
+        className={`block w-full rounded-xl border bg-white p-3.5 text-left shadow-sm transition-all hover:border-blue-300 hover:shadow sm:p-5 ${
+          active ? "border-blue-500 ring-1 ring-blue-200" : "border-slate-200"
+        }`}
+      >
+        <div className="flex gap-3 sm:gap-4">
+          <div
+            className={`flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl sm:h-14 sm:w-14 ${
+              hospital.is_ganadi
+                ? "bg-gradient-to-br from-blue-100 to-blue-200 text-blue-700"
+                : "bg-slate-100 text-slate-400"
+            }`}
+          >
+            <Stethoscope className="h-5 w-5 sm:h-6 sm:w-6" />
           </div>
-
-          {hospital.is_ganadi && hospital.rating != null ? (
-            <div className="mb-1 flex items-center gap-1 text-amber-500">
-              <Star className="h-4 w-4 fill-current" />
-              <span className="text-sm font-bold text-slate-900">{hospital.rating.toFixed(1)}</span>
-              <span className="text-xs text-slate-400">({hospital.review_count} 리뷰)</span>
-            </div>
-          ) : null}
-
-          <div className="space-y-1 text-sm text-slate-500">
-            <div className="flex items-start gap-1.5">
-              <MapPin className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
-              <span className="truncate">
-                {hospital.road_address || hospital.address || "주소 정보 없음"}
-              </span>
-              {distanceLabel && (
-                <span className="ml-auto flex-shrink-0 font-semibold text-blue-600">
-                  {distanceLabel}
+          <div className="min-w-0 flex-1">
+            <div className="mb-1 flex flex-wrap items-center gap-2">
+              <h3 className="truncate font-bold text-slate-900">{hospital.place_name}</h3>
+              {hospital.is_ganadi && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-700">
+                  <ShieldCheck className="h-3 w-3" /> GANADI 인증
                 </span>
               )}
             </div>
-            {hospital.phone && (
-              <div className="flex items-center gap-1.5">
-                <Phone className="h-3.5 w-3.5" />
-                <span>{hospital.phone}</span>
+
+            {hospital.is_ganadi && hospital.rating != null ? (
+              <div className="mb-1 flex items-center gap-1 text-amber-500">
+                <Star className="h-4 w-4 fill-current" />
+                <span className="text-sm font-bold text-slate-900">{hospital.rating.toFixed(1)}</span>
+                <span className="text-xs text-slate-400">({hospital.review_count} 리뷰)</span>
               </div>
-            )}
-            {hospital.is_ganadi && (hospital.specialty || hospital.business_hours) && (
-              <div className="flex flex-wrap items-center gap-2 pt-1">
-                {hospital.specialty && (
-                  <span className="rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
-                    {hospital.specialty}
+            ) : null}
+
+            <div className="space-y-1 text-sm text-slate-500">
+              <div className="flex items-start gap-1.5">
+                <MapPin className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
+                <span className="truncate">
+                  {address || "주소 정보 없음"}
+                </span>
+                {distanceLabel && (
+                  <span className="ml-auto flex-shrink-0 font-semibold text-blue-600">
+                    {distanceLabel}
                   </span>
                 )}
-                {hospital.business_hours && (
-                  <span className="text-xs text-slate-400">{hospital.business_hours}</span>
-                )}
               </div>
-            )}
-          </div>
+              {hospital.phone && (
+                <div className="flex items-center gap-1.5">
+                  <Phone className="h-3.5 w-3.5" />
+                  <span>{hospital.phone}</span>
+                </div>
+              )}
+              {hospital.is_ganadi && (hospital.specialty || hospital.business_hours) && (
+                <div className="flex flex-wrap items-center gap-2 pt-1">
+                  {hospital.specialty && (
+                    <span className="rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
+                      {hospital.specialty}
+                    </span>
+                  )}
+                  {hospital.business_hours && (
+                    <span className="text-xs text-slate-400">{hospital.business_hours}</span>
+                  )}
+                </div>
+              )}
+            </div>
 
-          <div className="mt-3 flex flex-wrap gap-2">
-            {hospital.is_ganadi && hospital.vet_id ? (
-              <Link
-                to={`/opinion-request/${hospital.vet_id}`}
-                onClick={(e) => e.stopPropagation()}
-                className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700"
-              >
-                소견 요청
-              </Link>
-            ) : (
-              <span className="rounded-lg border border-dashed border-slate-300 px-3 py-1.5 text-xs text-slate-400">
-                GANADI 미가입 병원
-              </span>
-            )}
-            {hospital.phone && (
-              <a
-                href={`tel:${hospital.phone}`}
-                onClick={(e) => e.stopPropagation()}
+            <div className="mt-3 flex flex-wrap gap-2">
+              {hospital.is_ganadi && hospital.vet_id ? (
+                <Link
+                  to={`/opinion-request/${hospital.vet_id}`}
+                  onClick={(e) => e.stopPropagation()}
+                  className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700"
+                >
+                  소견 요청
+                </Link>
+              ) : (
+                <span className="rounded-lg border border-dashed border-slate-300 px-3 py-1.5 text-xs text-slate-400">
+                  GANADI 미가입 병원
+                </span>
+              )}
+              {hospital.phone && (
+                <a
+                  href={`tel:${hospital.phone}`}
+                  onClick={(e) => e.stopPropagation()}
+                  className="inline-flex items-center gap-1 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+                >
+                  <Phone className="h-3 w-3" /> 전화
+                </a>
+              )}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowSheet(true);
+                }}
                 className="inline-flex items-center gap-1 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
               >
-                <Phone className="h-3 w-3" /> 전화
-              </a>
-            )}
-            <a
-              href={`https://map.kakao.com/link/to/${encodeURIComponent(hospital.place_name)},${hospital.y},${hospital.x}`}
-              target="_blank"
-              rel="noreferrer"
-              onClick={(e) => e.stopPropagation()}
-              className="inline-flex items-center gap-1 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
-            >
-              <Navigation className="h-3 w-3" /> 길찾기
-            </a>
+                <Navigation className="h-3 w-3" /> 길찾기
+              </button>
+            </div>
           </div>
         </div>
-      </div>
-    </button>
+      </button>
+
+      {/* 길찾기 바텀시트 */}
+      {showSheet && (
+        <div
+          className="fixed inset-0 z-[100] flex items-end justify-center bg-black/40 backdrop-blur-sm"
+          onClick={() => setShowSheet(false)}
+        >
+          <div
+            className="w-full max-w-md animate-slide-up rounded-t-2xl bg-white px-5 pb-8 pt-4 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+            style={{ animationDuration: "200ms" }}
+          >
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-base font-bold text-slate-900">길찾기</h3>
+              <button
+                type="button"
+                onClick={() => setShowSheet(false)}
+                className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="mb-5 rounded-xl bg-slate-50 p-3.5">
+              <p className="text-sm font-semibold text-slate-800">{hospital.place_name}</p>
+              {address && (
+                <p className="mt-1 text-xs text-slate-500">{address}</p>
+              )}
+            </div>
+
+            <div className="flex flex-col gap-2.5">
+              <button
+                type="button"
+                onClick={handleCopy}
+                className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white py-3 text-sm font-semibold text-slate-700 transition active:bg-slate-50"
+              >
+                <Copy className="h-4 w-4" />
+                {copied ? "복사 완료!" : "주소 복사"}
+              </button>
+              <a
+                href={kakaoUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => setShowSheet(false)}
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#FEE500] py-3 text-sm font-bold text-[#3C1E1E] transition active:brightness-95"
+              >
+                <ExternalLink className="h-4 w-4" />
+                카카오맵에서 열기
+              </a>
+            </div>
+            <p className="mt-3 text-center text-[11px] text-slate-400">
+              카카오맵 앱이 열리면, 앱을 닫고 브라우저로 돌아와 주세요
+            </p>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

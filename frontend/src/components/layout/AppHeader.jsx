@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
-import { Link, NavLink, useNavigate } from 'react-router';
-import { Menu, User, Bell } from 'lucide-react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { Link, NavLink, useNavigate, useLocation } from 'react-router';
+import { Menu, X, User, Bell } from 'lucide-react';
 import useAuthStore from '../../stores/authStore';
 import { cn } from '../../lib/utils';
 import { getNotifications } from '../../api/notifications';
@@ -18,6 +18,29 @@ export default function AppHeader() {
   const logout = useAuthStore((s) => s.logout);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const menuRef = useRef(null);
+  const location = useLocation();
+
+  // 페이지 이동 시 메뉴 닫기
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [location.pathname]);
+
+  // 메뉴 바깥 클릭 시 닫기
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const handleClick = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) {
+        setMobileOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    document.addEventListener('touchstart', handleClick);
+    return () => {
+      document.removeEventListener('mousedown', handleClick);
+      document.removeEventListener('touchstart', handleClick);
+    };
+  }, [mobileOpen]);
 
   const [unreadCount, setUnreadCount] = useState(0);
 
@@ -36,7 +59,7 @@ export default function AppHeader() {
   };
 
   return (
-    <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/75 shadow-sm backdrop-blur-md">
+    <header ref={menuRef} className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/75 shadow-sm backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         <div className="flex items-center gap-6 lg:gap-10">
           <Link
@@ -126,15 +149,13 @@ export default function AppHeader() {
             aria-label="메뉴"
             onClick={() => setMobileOpen((o) => !o)}
           >
-            <Menu className="size-5" />
+            {mobileOpen ? <X className="size-5" /> : <Menu className="size-5" />}
           </button>
         </div>
       </div>
 
       {mobileOpen && (
-        <div className="border-t border-slate-200/80 bg-white/95 px-4 py-3 backdrop-blur-md lg:hidden">
-          {/* 하단 탭바에 5개 주요 메뉴(홈/반려동물/AI/병원/마이) 가 있으므로
-              햄버거 메뉴에는 보조 메뉴(백과·공지 등)만 노출해서 중복을 줄임 */}
+        <div className="animate-slide-down border-t border-slate-200/80 bg-white/95 px-4 py-3 backdrop-blur-md lg:hidden">
           <nav className="flex flex-col gap-1 text-sm">
             <NavLink to="/encyclopedia" className={navClass} onClick={() => setMobileOpen(false)}>
               질환 백과

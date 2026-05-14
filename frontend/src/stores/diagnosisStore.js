@@ -6,6 +6,7 @@ const useDiagnosisStore = create((set, get) => ({
   diagnoses: [],
   currentDiagnosis: null,
   loading: false,
+  pdfLoading: false,
   error: null,
 
   // Actions
@@ -72,21 +73,7 @@ const useDiagnosisStore = create((set, get) => ({
   },
 
   downloadPDF: async (diagnosisId) => {
-    set({ loading: true, error: null });
-    try {
-      await downloadDiagnosisPDF(diagnosisId);
-      set({ loading: false });
-    } catch (error) {
-      const msg =
-        error?.message ||
-        error.response?.data?.detail ||
-        'PDF 다운로드에 실패했습니다.';
-      set({
-        error: msg,
-        loading: false,
-      });
-      throw error;
-    }
+    await downloadDiagnosisPDF(diagnosisId);
   },
 
   clearError: () => set({ error: null }),

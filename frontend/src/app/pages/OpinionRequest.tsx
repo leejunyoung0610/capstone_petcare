@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { getMyPets } from "../../api/pets";
 import { getMyDiagnoses } from "../../api/diagnosis";
-import { createOpinion } from "../../api/opinions";
+import { prepareTossPayment } from "../../api/payments";
+import { loadTossPayments } from "@tosspayments/tosspayments-sdk";
 import { Header } from "../components/Header";
 import { Upload, X, AlertCircle, FileText, CheckCircle } from "lucide-react";
 import { format, addHours } from "date-fns";
@@ -60,15 +61,37 @@ export function OpinionRequest() {
     if (!agreed1 || !agreed2) return alert("약관에 동의해주세요.");
     try {
       setIsLoading(true);
-      await createOpinion({
+      const prep = await prepareTossPayment({
         vet_id: parseInt(vetId!),
-        ...(selectedDiagnosis && { diagnosis_id: parseInt(selectedDiagnosis) }),
+        diagnosis_id: parseInt(selectedDiagnosis),
         symptom_memo: symptomDescription,
       });
-      alert("수의사 소견 요청이 접수되었습니다.");
-      navigate("/mypage");
-    } catch {
-      alert("요청에 실패했습니다. 다시 시도해주세요.");
+      const tossPayments = await loadTossPayments(prep.clientKey);
+      await tossPayments.payment({ customerKey: prep.customerKey }).requestPayment({
+        method: "CARD",
+        amount: { currency: "KRW", value: prep.amount },
+        orderId: prep.orderId,
+        orderName: prep.orderName,
+        successUrl: prep.successUrl,
+        failUrl: prep.failUrl,
+      });
+    } catch (e: unknown) {
+      const detail =
+        typeof e === "object" && e !== null && "response" in e
+          ? (e as { response?: { data?: { detail?: string }; status?: number } }).response?.data?.detail
+          : undefined;
+      const status =
+        typeof e === "object" && e !== null && "response" in e
+          ? (e as { response?: { status?: number } }).response?.status
+          : undefined;
+      if (status === 503) {
+        alert(
+          detail?.toString() ||
+            "결제 모드가 비활성입니다. backend/.env 에 토스 테스트 키(TOSS_PAYMENTS_*)를 설정하세요."
+        );
+      } else {
+        alert(detail?.toString() || "결제 준비에 실패했습니다. 다시 시도해주세요.");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -242,7 +265,9 @@ export function OpinionRequest() {
                 <li>· 본 서비스는 원격 소견 제공이며, 진단이나 처방이 아닙니다</li>
                 <li>· 응급 상황의 경우 즉시 동물병원을 방문하시기 바랍니다</li>
                 <li>· 소견 제공까지 평균 12~24시간 소요됩니다</li>
-                <li>· 결제는 소견 제공 후 진행됩니다</li>
+                <li>
+                  · 토스페이먼츠 <strong>테스트 결제</strong>로 선결제 후 요청이 접수됩니다 (실제 과금 없음)
+                </li>
               </ul>
             </div>
           </div>
@@ -286,7 +311,7 @@ export function OpinionRequest() {
               onClick={handleSubmit}
               disabled={isLoading}
             >
-              {isLoading ? "요청 중..." : "소견 요청하기 (30,000원)"}
+              {isLoading ? "결제창 여는 중..." : "테스트 결제 후 소견 요청"}
             </button>
           </div>
         </div>

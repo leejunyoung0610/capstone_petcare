@@ -36,9 +36,24 @@ export const getPetDiagnoses = async (petId) => {
   return response.data;
 };
 
+// 진단 결과 삭제
+export const deleteDiagnosis = async (diagnosisId) => {
+  await apiClient.delete(`/diagnosis/${diagnosisId}`);
+};
+
+// 인앱 보고서 조회 (없으면 AI 서버에서 생성 후 DB에 저장)
+export const getDiagnosisReport = async (diagnosisId) => {
+  const response = await apiClient.get(`/diagnosis/${diagnosisId}/report`, {
+    timeout: 120000,
+  });
+  return response.data;
+};
+
 // PDF 다운로드 (Claude 리포트 + ReportLab PDF — 서버 처리 시간이 길 수 있음)
 export const downloadDiagnosisPDF = async (diagnosisId) => {
   try {
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
     const response = await apiClient.get(`/diagnosis/${diagnosisId}/pdf`, {
       responseType: 'blob',
       timeout: 120000,
@@ -49,14 +64,26 @@ export const downloadDiagnosisPDF = async (diagnosisId) => {
       throw new Error('PDF 응답이 올바르지 않습니다.');
     }
 
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `진단보고서_${diagnosisId}.pdf`);
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    window.URL.revokeObjectURL(url);
+    const pdfBlob = new Blob([blob], { type: 'application/pdf' });
+    const url = window.URL.createObjectURL(pdfBlob);
+
+    if (isMobile) {
+      const link = document.createElement('a');
+      link.href = url;
+      link.target = '_blank';
+      link.rel = 'noopener';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } else {
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `진단보고서_${diagnosisId}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    }
+    setTimeout(() => window.URL.revokeObjectURL(url), 30000);
   } catch (error) {
     const data = error.response?.data;
     if (data instanceof Blob) {

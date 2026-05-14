@@ -3,7 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router';
 import { useDropzone } from 'react-dropzone';
 import ReactCrop from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
-import { Upload as UploadIcon, Camera } from 'lucide-react';
+import { Upload as UploadIcon, Camera, AlertTriangle } from 'lucide-react';
 import usePetStore from '../../stores/petStore';
 import useDiagnosisStore from '../../stores/diagnosisStore';
 import Button from '../../components/ui/Button';
@@ -107,6 +107,17 @@ export default function DiagnoseNew() {
       <p className="mt-1.5 max-w-2xl text-xs leading-relaxed text-slate-500 sm:mt-3 sm:text-sm">
         반려동물을 선택하고 선명한 눈 사진을 올려주세요. 결과는 참고용입니다.
       </p>
+
+      <div className="mt-4 flex gap-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-950 sm:mt-6 sm:p-4 sm:text-sm">
+        <AlertTriangle className="h-5 w-5 flex-shrink-0 text-amber-600" aria-hidden />
+        <div className="space-y-1 leading-relaxed">
+          <p className="font-semibold text-amber-900">의료기기·진단이 아닙니다</p>
+          <p>
+            AI 결과는 사전 스크리닝용 참고 정보일 뿐이며 오류가 있을 수 있습니다. 이상 징후가 있거나 불안하면 지체 없이
+            동물병원에서 면허 수의사의 진단을 받으세요.
+          </p>
+        </div>
+      </div>
 
       {/* 진행 상태 — 모바일은 작은 한 줄, sm+ 는 풍성하게 */}
       <div className="mb-5 mt-4 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:mb-10 sm:mt-8 sm:p-5">

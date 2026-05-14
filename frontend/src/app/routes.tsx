@@ -24,6 +24,10 @@ import { Announcements } from './pages/Announcements';
 import { AnnouncementDetail } from './pages/AnnouncementDetail';
 import { DiseaseDetail } from './pages/DiseaseDetail';
 import { KakaoCallback } from './pages/KakaoCallback';
+import { LegalPrivacy } from './pages/LegalPrivacy';
+import { LegalTerms } from './pages/LegalTerms';
+import { PaymentTossSuccess } from './pages/PaymentTossSuccess';
+import { PaymentTossFail } from './pages/PaymentTossFail';
 
 import Register from '../pages/auth/Register';
 import Dashboard from '../pages/Dashboard';
@@ -67,6 +71,8 @@ export const router = createBrowserRouter([
   { path: '/auth/kakao/callback', Component: KakaoCallback },
   { path: '/register', Component: Register },
   { path: '/vet/register', Component: VetRegister },
+  { path: '/legal/privacy', Component: LegalPrivacy },
+  { path: '/legal/terms', Component: LegalTerms },
 
 
   {
@@ -113,6 +119,8 @@ export const router = createBrowserRouter([
           { path: '/encyclopedia/:id', Component: DiseaseDetail },
           { path: '/announcements', Component: Announcements },
           { path: '/announcements/:id', Component: AnnouncementDetail },
+          { path: '/payment/toss/success', Component: PaymentTossSuccess },
+          { path: '/payment/toss/fail', Component: PaymentTossFail },
         ],
       },
     ],

@@ -2,80 +2,12 @@ import { useState } from "react";
 import { useNavigate } from "react-router";
 import { Header } from "../components/Header";
 import { Search, BookOpen, Dog, Cat } from "lucide-react";
+import diseases from "../../data/diseases";
 
 export function DiseaseEncyclopedia() {
   const navigate = useNavigate();
   const [selectedAnimal, setSelectedAnimal] = useState<"ALL" | "DOG" | "CAT">("ALL");
   const [searchQuery, setSearchQuery] = useState("");
-
-  const diseases = [
-    {
-      id: 1,
-      name: "결막염",
-      englishName: "Conjunctivitis",
-      animalType: "ALL",
-      description: "결막에 염증이 생긴 상태로 눈의 흰자위가 빨갛게 충혈되고 눈곱이 많이 낍니다.",
-      symptoms: ["눈 충혈", "눈곱 증가", "눈물 과다 분비", "눈을 자주 비빔"],
-      treatment: "항생제 안약 투여, 소염제 처방, 원인 제거",
-      prevention: "눈 주변 청결 유지, 정기적인 검진, 알레르기 원인 파악",
-      severity: "경증~중증"
-    },
-    {
-      id: 2,
-      name: "각막궤양",
-      englishName: "Corneal Ulcer",
-      animalType: "ALL",
-      description: "각막 표면에 상처가 생겨 궤양이 형성된 상태로, 심한 통증을 동반합니다.",
-      symptoms: ["눈을 뜨지 못함", "눈물 과다", "각막 혼탁", "심한 통증"],
-      treatment: "항생제 투여, 통증 관리, 심한 경우 수술",
-      prevention: "외상 예방, 눈 보호, 정기 검진",
-      severity: "중증"
-    },
-    {
-      id: 3,
-      name: "백내장",
-      englishName: "Cataract",
-      animalType: "DOG",
-      description: "수정체가 혼탁해져 시력이 저하되는 질환으로, 노령견에게 흔합니다.",
-      symptoms: ["수정체 흰색 변화", "시력 저하", "부딪힘", "눈동자 혼탁"],
-      treatment: "외과적 수술, 초기 진행 억제 약물",
-      prevention: "정기 검진, 유전적 요인 관리, 당뇨병 관리",
-      severity: "중증"
-    },
-    {
-      id: 4,
-      name: "녹내장",
-      englishName: "Glaucoma",
-      animalType: "DOG",
-      description: "안압 상승으로 인해 시신경이 손상되는 질환으로 응급 상황입니다.",
-      symptoms: ["안구 돌출", "심한 통증", "눈 충혈", "동공 확대"],
-      treatment: "응급 안압 하강 치료, 수술, 지속적인 관리",
-      prevention: "정기 안압 측정, 조기 발견",
-      severity: "응급/중증"
-    },
-    {
-      id: 5,
-      name: "유루증",
-      englishName: "Epiphora",
-      animalType: "ALL",
-      description: "눈물이 과도하게 분비되어 눈 주변이 젖는 증상입니다.",
-      symptoms: ["눈물 자국", "눈 주변 변색", "지속적인 눈물", "눈곱"],
-      treatment: "원인 질환 치료, 눈물길 소통, 청결 관리",
-      prevention: "눈 주변 청결, 털 관리, 정기 검진",
-      severity: "경증~중증"
-    },
-    {
-      id: 6,
-      name: "각막부골편",
-      englishName: "Corneal Sequestrum",
-      animalType: "CAT",
-      description: "각막에 검은 반점이 생기는 고양이 특유의 질환입니다.",
-      symptoms: ["각막 검은 반점", "눈물", "눈 충혈", "통증"],
-      treatment: "외과적 제거, 항생제 투여",
-      prevention: "각막 손상 예방, 정기 검진",
-      severity: "중증"
-    },
-  ];
 
   const filteredDiseases = diseases.filter(disease => {
     const matchesAnimal = selectedAnimal === "ALL" || disease.animalType === "ALL" || disease.animalType === selectedAnimal;

@@ -71,7 +71,10 @@ export function Login() {
               <button
                 key={type.key}
                 type="button"
-                onClick={() => setUserType(type.key as any)}
+                onClick={() => {
+                  clearError();
+                  setUserType(type.key as "user" | "vet" | "admin");
+                }}
                 className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${userType === type.key
                   ? "bg-white text-slate-900 shadow-sm"
                   : "text-slate-500 hover:text-slate-700"
@@ -185,10 +188,18 @@ export function Login() {
           </div>
         </div>
 
-        <div className="text-center mt-6">
-          <Link to="/" className="text-sm text-slate-500 hover:text-slate-900">
+        <div className="text-center mt-6 space-y-2">
+          <Link to="/" className="block text-sm text-slate-500 hover:text-slate-900">
             ← 메인으로 돌아가기
           </Link>
+          <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs text-slate-500">
+            <Link to="/legal/privacy" className="hover:text-slate-800 underline-offset-2 hover:underline">
+              개인정보 처리방침
+            </Link>
+            <Link to="/legal/terms" className="hover:text-slate-800 underline-offset-2 hover:underline">
+              이용약관
+            </Link>
+          </div>
         </div>
       </div>
     </div>

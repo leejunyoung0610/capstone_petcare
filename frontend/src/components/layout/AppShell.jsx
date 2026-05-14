@@ -42,12 +42,15 @@ function MobileTabBar() {
       style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
     >
       <div className="relative">
-        {/* 가운데 floating CTA — 탭바 위로 살짝 떠 있음 */}
-        <div className="pointer-events-none absolute inset-x-0 -top-6 flex justify-center">
+        {/* 노치 배경 — 버튼 뒤에 흰 원을 깔아 탭바와 자연스럽게 이어지게 */}
+        <div className="absolute left-1/2 -top-[31px] z-[1] h-[68px] w-[68px] -translate-x-1/2 rounded-full bg-white" />
+
+        {/* 가운데 floating CTA */}
+        <div className="pointer-events-none absolute inset-x-0 -top-[30px] z-[2] flex justify-center">
           <NavLink
             to="/diagnosis/new"
             aria-label="AI 분석"
-            className={`pointer-events-auto flex h-14 w-14 items-center justify-center rounded-full shadow-lg shadow-blue-500/30 ring-4 ring-white transition active:scale-95 ${
+            className={`pointer-events-auto flex h-[60px] w-[60px] items-center justify-center rounded-full shadow-lg shadow-blue-500/30 transition active:scale-95 ${
               aiActive
                 ? 'bg-gradient-to-br from-blue-600 to-violet-600 text-white'
                 : 'bg-gradient-to-br from-blue-500 to-violet-500 text-white hover:from-blue-600 hover:to-violet-600'
@@ -57,7 +60,7 @@ function MobileTabBar() {
           </NavLink>
         </div>
 
-        <div className="border-t border-slate-200 bg-white/95 backdrop-blur-md">
+        <div className="relative shadow-[0_-1px_3px_rgba(0,0,0,0.06)] bg-white/95 backdrop-blur-md">
           <div className="mx-auto grid max-w-md grid-cols-5 items-end px-2 pt-2 pb-1.5">
             {sideItems.map(({ to, icon: Icon, label }) => (
               <TabItem key={to} to={to} Icon={Icon} label={label} />

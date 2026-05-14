@@ -18,6 +18,13 @@ const initialToken =
 const initialUser = readStoredUser();
 
 function formatError(error) {
+  if (!error.response) {
+    const m = error.message || '';
+    if (m === 'Network Error' || error.code === 'ERR_NETWORK') {
+      return '서버에 연결할 수 없습니다. 백엔드가 켜져 있는지 확인해 주세요.';
+    }
+    return m || '요청에 실패했습니다.';
+  }
   const detail = error.response?.data?.detail;
   if (typeof detail === 'string') return detail;
   if (Array.isArray(detail)) {
