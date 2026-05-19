@@ -47,6 +47,9 @@
 
 ## 2. 배포 전 필수 (P0)
 
+> **자동화**: `backend/scripts/check_production_env.sh`, `deploy-prod.sh`, `smoke-test.sh`  
+> **상세 절차**: [DEPLOYMENT.md](./DEPLOYMENT.md)
+
 ### 코드·DB
 - [ ] 미커밋 변경사항 커밋·푸시
 - [ ] 프로덕션 DB에 `alembic upgrade head` 실행 (Docker `backend` CMD에 포함)
@@ -65,10 +68,18 @@
 - [ ] `vapid_keys.json` Git 미추적 확인
 
 ### Docker·인프ra
-- [ ] `docker-compose.yml` 프론트 `context` — 모노레포는 `../frontend` (별도 레포면 `../GANADI-frontend`)
+- [x] `docker-compose.yml` 프론트 `context` → `../frontend`
+- [x] backend·ai healthcheck, prod compose RDS·ENVIRONMENT=production
+- [x] Nginx CSP 토스페이ments 도메인 추가
 - [ ] SSL: `/etc/ssl/ganadi/` → nginx 볼륨 마운트
 - [ ] 배포: `docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build`
 - [ ] 빌드 arg: `VITE_API_URL=https://ganadi.site`, `VITE_AI_SERVER_URL=https://ganadi.site/ai`, `VITE_KAKAO_MAP_KEY`
+
+### 보안 (코드 반영)
+- [x] `ENVIRONMENT=production` 시 OpenAPI `/docs` 비활성, LAN CORS regex 비활성
+- [x] 프로덕션 기동 시 `SECRET_KEY`·SMTP dev 링크 등 검증
+- [x] 로그인·비밀번호 찾기 rate limit
+- [x] config.py 카카오 시크릿 하드코딩 제거
 
 ### 카카오 개발자 콘솔
 - [ ] Web 사이트 도메인: `https://ganadi.site`
@@ -89,7 +100,7 @@
 - [ ] `TOSS_PAYMENTS_CLIENT_KEY`, `TOSS_PAYMENTS_SECRET_KEY`
 - [ ] 소견 요청 → 결제 → 성공/실패 리다이렉트
 - [ ] 웹훅 URL(HTTPS) + `TOSS_WEBHOOK_SECURITY_KEY`
-- [ ] Nginx CSP에 `*.tosspayments.com` 필요 시 `script-src`·`connect-src` 추가
+- [x] Nginx CSP에 토스페이ments 도메인 추가
 
 ### Web Push (PWA)
 - [ ] HTTPS에서 구독·알림 수신 E2E
@@ -151,6 +162,13 @@
 - 시연 계정·시드 (`python -m scripts.seed_demo_vets`)·AI 서버 가용성 사전 확인
 - 네트워크 차단 시 사용자-facing 오류 메시지 확인
 - Mailpit 로컬 테스트: `docker run -d --name peteye-mailpit -p 8025:8025 -p 1025:1025 axllent/mailpit` → UI http://localhost:8025
+
+---
+
+## 관련 문서
+
+- [DEPLOYMENT.md](./DEPLOYMENT.md) — 배포 절차·스크립트
+- [CHANGELOG_SESSION_2026-05-19.md](./CHANGELOG_SESSION_2026-05-19.md) — 기능 변경 이력
 
 ---
 
