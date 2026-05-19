@@ -89,6 +89,7 @@ export function MyPage() {
   const profileImageRef = useRef<HTMLInputElement>(null);
   const [phone, setPhone] = useState("");
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
+  const [withdrawPassword, setWithdrawPassword] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -116,13 +117,18 @@ export function MyPage() {
 
   const handleWithdraw = async () => {
     try {
-      await authAPI.deleteMe();
+      await authAPI.deleteMe({ password: withdrawPassword });
       logout();
       navigate("/");
-    } catch {
-      alert("회원 탈퇴에 실패했습니다.");
-    } finally {
+    } catch (err: any) {
+      const status = err?.response?.status;
+      if (status === 401) {
+        alert("비밀번호가 올바르지 않습니다.");
+      } else {
+        alert("회원 탈퇴에 실패했습니다.");
+      }
       setShowWithdrawModal(false);
+      setWithdrawPassword("");
     }
   };
 
@@ -543,9 +549,13 @@ export function MyPage() {
         confirmText="탈퇴하기"
         cancelText="취소"
         onConfirm={handleWithdraw}
-        onCancel={() => setShowWithdrawModal(false)}
+        onCancel={() => { setShowWithdrawModal(false); setWithdrawPassword(""); }}
         isDanger={true}
-      />
+      >
+        <input type="password" value={withdrawPassword} onChange={(e) => setWithdrawPassword(e.target.value)}
+          placeholder="비밀번호를 입력해주세요"
+          className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm focus:border-blue-500 focus:outline-none mt-3" />
+      </Modal>
     </>
   );
 }

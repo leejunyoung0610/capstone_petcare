@@ -1,3 +1,5 @@
+import React from "react";
+
 interface ModalProps {
   isOpen: boolean;
   title: string;
@@ -7,6 +9,7 @@ interface ModalProps {
   onConfirm: () => void;
   onCancel: () => void;
   isDanger?: boolean;
+  children?: React.ReactNode;
 }
 
 export function Modal({
@@ -18,6 +21,7 @@ export function Modal({
   onConfirm,
   onCancel,
   isDanger = false,
+  children,
 }: ModalProps) {
   if (!isOpen) return null;
 
@@ -31,7 +35,8 @@ export function Modal({
       {/* 모달 */}
       <div className="relative bg-white rounded-xl p-6 w-full max-w-sm mx-4 shadow-xl">
         <h2 className="text-lg font-bold text-gray-900 mb-2">{title}</h2>
-        <p className="text-sm text-gray-600 mb-6">{message}</p>
+        <p className="text-sm text-gray-600 mb-3">{message}</p>
+        {children}
         <div className="flex gap-3">
           <button
             onClick={onCancel}
@@ -41,9 +46,8 @@ export function Modal({
           </button>
           <button
             onClick={onConfirm}
-            className={`flex-1 py-2.5 rounded-lg text-sm font-semibold text-white ${
-              isDanger ? "bg-red-500 hover:bg-red-600" : "bg-blue-600 hover:bg-blue-700"
-            }`}
+            className={`flex-1 py-2.5 rounded-lg text-sm font-semibold text-white ${isDanger ? "bg-red-500 hover:bg-red-600" : "bg-blue-600 hover:bg-blue-700"
+              }`}
           >
             {confirmText}
           </button>

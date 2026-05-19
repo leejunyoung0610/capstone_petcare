@@ -87,7 +87,8 @@ function skipRefreshOn401(config) {
     url.includes('/auth/vet/register') ||
     url.includes('/auth/vet/register-with-docs') ||
     url.includes('/auth/refresh') ||
-    url.includes('/users/me/password')
+    url.includes('/users/me/password') ||
+    url.includes('/users/me')
   );
 }
 
@@ -96,11 +97,7 @@ apiClient.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    if (
-      error.response?.status === 401 &&
-      !originalRequest._retry &&
-      !skipRefreshOn401(originalRequest)
-    ) {
+    if (error.response?.status === 401 && !originalRequest._retry && !skipRefreshOn401(originalRequest)) {
       // 이미 refresh 중이면 대기
       if (isRefreshing) {
         return new Promise((resolve, reject) => {

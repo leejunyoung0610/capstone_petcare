@@ -91,6 +91,9 @@ export default function AppHeader() {
                 <NavLink to="/dashboard" className={navClass}>
                   대시보드
                 </NavLink>
+                <NavLink to="/report" className={navClass}>
+                  신고하기
+                </NavLink>
               </>
             )}
           </nav>
@@ -119,6 +122,7 @@ export default function AppHeader() {
               >
                 <User className="size-5" />
               </button>
+
               <button
                 type="button"
                 onClick={handleLogout}
@@ -157,17 +161,20 @@ export default function AppHeader() {
       {mobileOpen && (
         <div className="animate-slide-down border-t border-slate-200/80 bg-white/95 px-4 py-3 backdrop-blur-md lg:hidden">
           <nav className="flex flex-col gap-1 text-sm">
+            <NavLink to="/diagnosis/history" className={navClass} onClick={() => setMobileOpen(false)}>
+              내 진단 이력
+            </NavLink>
+            <NavLink to="/opinions" className={navClass} onClick={() => setMobileOpen(false)}>
+              내 소견 요청
+            </NavLink>
             <NavLink to="/encyclopedia" className={navClass} onClick={() => setMobileOpen(false)}>
               질환 백과
             </NavLink>
             <NavLink to="/announcements" className={navClass} onClick={() => setMobileOpen(false)}>
               공지사항
             </NavLink>
-            <NavLink to="/diagnosis/history" className={navClass} onClick={() => setMobileOpen(false)}>
-              내 진단 이력
-            </NavLink>
-            <NavLink to="/opinions" className={navClass} onClick={() => setMobileOpen(false)}>
-              내 소견 요청
+            <NavLink to="/report" className={navClass} onClick={() => setMobileOpen(false)}>
+              신고하기
             </NavLink>
             {isAuthenticated ? (
               <button

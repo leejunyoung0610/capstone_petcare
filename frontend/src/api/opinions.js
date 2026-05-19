@@ -63,6 +63,6 @@ export const downloadOpinionPDF = async (opinionId) => {
 
 // 리뷰 작성 (평점·리뷰)
 export const rateOpinion = async (opinionId, data) => {
-  const response = await apiClient.post(`/opinions/${opinionId}/rate`, data);
+  const response = await apiClient.patch(`/opinions/${opinionId}/rating`, data);
   return response.data;
 };

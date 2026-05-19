@@ -50,11 +50,11 @@ export const authAPI = {
   },
 
   // 회원 탈퇴
-  deleteMe: () => {
-    return apiClient.delete('/users/me');
+  deleteMe: (data) => {
+    return apiClient.delete('/users/me', { data });
   },
 
-   // 비밀번호 변경
+  // 비밀번호 변경
   changePassword: (data) => {
     return apiClient.put('/users/me/password', data);
   },

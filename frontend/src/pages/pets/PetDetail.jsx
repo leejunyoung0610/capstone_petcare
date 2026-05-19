@@ -85,7 +85,7 @@ export default function PetDetail() {
             pet.breed && { label: '품종', value: pet.breed },
             pet.age && { label: '나이', value: `${pet.age}세` },
             pet.gender && { label: '성별', value: pet.gender === 'male' ? '남아' : '여아' },
-            pet.medical_history && { label: '병력', value: pet.medical_history },
+            pet.notes && { label: '병력/특이사항', value: pet.notes },
           ].filter(Boolean).map((item) => (
             <div key={item.label} className="flex justify-between border-b border-slate-100 pb-3">
               <span className="font-medium text-slate-500">{item.label}</span>

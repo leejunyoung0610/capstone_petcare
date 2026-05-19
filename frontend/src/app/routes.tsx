@@ -37,6 +37,7 @@ import DiagnoseNew from '../pages/diagnosis/DiagnoseNew';
 import DiagnoseResult from '../pages/diagnosis/DiagnoseResult';
 import DiagnosisHistory from '../pages/diagnosis/DiagnosisHistory';
 import PetDetail from '../pages/pets/PetDetail';
+import Report from '../pages/Report';
 
 function ProtectedLayout() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
@@ -119,6 +120,7 @@ export const router = createBrowserRouter([
           { path: '/encyclopedia/:id', Component: DiseaseDetail },
           { path: '/announcements', Component: Announcements },
           { path: '/announcements/:id', Component: AnnouncementDetail },
+          { path: '/report', Component: Report },
           { path: '/payment/toss/success', Component: PaymentTossSuccess },
           { path: '/payment/toss/fail', Component: PaymentTossFail },
         ],

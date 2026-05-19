@@ -10,7 +10,7 @@ const sideItems = [
 ];
 const sideItemsRight = [
   { to: '/vets', icon: MapPin, label: '병원' },
-  { to: '/mypage', icon: User, label: '마이' },
+  { to: '/mypage', icon: User, label: '마이페이지' },
 ];
 
 // AI 분석 페이지에 있을 때는 가운데 버튼을 활성색으로 표시

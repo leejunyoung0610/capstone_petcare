@@ -38,7 +38,7 @@ export default function PetForm() {
           age: pet.age ? pet.age.toString() : '',
           gender: pet.gender || '',
           is_neutered: pet.is_neutered || false,
-          medical_history: pet.medical_history || '',
+          medical_history: pet.notes || '',
         });
         if (pet.profile_image_url) {
           const imageUrl = pet.profile_image_url.startsWith('http')
@@ -99,7 +99,7 @@ export default function PetForm() {
         age: formData.age ? parseInt(formData.age) : null,
         gender: formData.gender || null,
         is_neutered: formData.is_neutered,
-        medical_history: formData.medical_history.trim() || null,
+        notes: formData.medical_history.trim() || null,
       };
 
       let petId;
@@ -116,7 +116,7 @@ export default function PetForm() {
         await uploadPetProfileImage(petId, profileImage);
       }
 
-      navigate(fromMyPage ? '/mypage' : '/pets');
+      navigate(isEdit ? `/pets/${id}` : '/pets');
     } catch (err) { }
   };
 
@@ -307,7 +307,7 @@ export default function PetForm() {
             <Button
               type="button"
               variant="secondary"
-              onClick={() => navigate('/pets')}
+              onClick={() => navigate(isEdit ? `/pets/${id}` : '/pets')}
               className="flex-1"
             >
               취소
