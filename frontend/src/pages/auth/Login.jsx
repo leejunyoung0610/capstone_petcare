@@ -132,7 +132,12 @@ export default function Login() {
                 <input type="checkbox" className="rounded" />
                 <span>로그인 상태 유지</span>
               </label>
-              <span className="cursor-not-allowed text-slate-400">비밀번호 찾기</span>
+              <span
+                className="cursor-default text-slate-400"
+                title="비밀번호 재설정은 이메일 발송 서비스 연동 후 제공 예정입니다."
+              >
+                비밀번호 찾기 (준비 중)
+              </span>
             </div>
 
             {/* 로그인 버튼 */}

@@ -14,6 +14,8 @@ import {
   ChevronRight,
   BadgeCheck,
   Loader2,
+  Shield,
+  Wallet,
 } from "lucide-react";
 import {
   LineChart,
@@ -61,7 +63,10 @@ interface VetProfile {
   name: string;
   hospital_name?: string | null;
   approval_status?: string;
+  opinion_fee_won?: number | null;
 }
+
+const DEFAULT_OPINION_FEE_WON = 30000;
 
 interface DashSummary {
   pending_count: number;
@@ -225,11 +230,18 @@ export function VetDashboard() {
 
         <div className="space-y-1 border-t border-slate-100 p-2">
           <Link
+            to="/vet/report-messages"
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-slate-600 hover:bg-slate-100"
+          >
+            <Shield className="h-4 w-4 shrink-0" />
+            {!sidebarCollapsed && <span>관리자 안내</span>}
+          </Link>
+          <Link
             to="/vet/profile"
             className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-slate-600 hover:bg-slate-100"
           >
             <Settings className="h-4 w-4 shrink-0" />
-            {!sidebarCollapsed && <span>병원 프로필</span>}
+            {!sidebarCollapsed && <span>프로필 · 상담료</span>}
           </Link>
           <button
             type="button"
@@ -283,6 +295,7 @@ export function VetDashboard() {
           )}
 
           {!loading && summary && (
+            <>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
               {[
                 {
@@ -344,6 +357,38 @@ export function VetDashboard() {
                 </div>
               ))}
             </div>
+
+            <div className="flex flex-col gap-3 rounded-xl border border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-start gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white shadow-sm">
+                  <Wallet className="h-5 w-5 text-blue-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-slate-900">원격 소견 상담료</p>
+                  <p className="mt-0.5 text-lg font-semibold text-blue-700">
+                    {(profile?.opinion_fee_won != null
+                      ? profile.opinion_fee_won
+                      : DEFAULT_OPINION_FEE_WON
+                    ).toLocaleString("ko-KR")}
+                    원
+                    {profile?.opinion_fee_won == null && (
+                      <span className="ml-2 text-xs font-normal text-slate-500">(플랫폼 기본값)</span>
+                    )}
+                  </p>
+                  <p className="mt-1 text-xs text-slate-600">
+                    보호자 소견 요청·결제 금액에 반영됩니다. 원하시는 금액으로 변경할 수 있습니다.
+                  </p>
+                </div>
+              </div>
+              <Link
+                to="/vet/profile#opinion-fee"
+                className="inline-flex shrink-0 items-center justify-center gap-1 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700"
+              >
+                상담료 설정
+                <ChevronRight className="h-4 w-4" />
+              </Link>
+            </div>
+            </>
           )}
 
           {!loading && activeTab === "pending" && (

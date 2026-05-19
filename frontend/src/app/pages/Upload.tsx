@@ -166,7 +166,7 @@ export function Upload() {
                   <p className="text-xs text-slate-500">결막염, 각막궤양, 백내장, 녹내장, 유루증, 각막부골편, 각막염, 안검내반증 등</p>
                 </div>
                 <div>
-                  <p className="font-bold text-green-600 mb-1">🐱 고양이 (5종)</p>
+                  <p className="font-bold text-green-600 mb-1">🐱 고양이 (AI 5개 라벨 · 백과 6건)</p>
                   <p className="text-xs text-slate-500">결막염, 각막궤양, 각막부골편, 유루증 등</p>
                 </div>
               </div>

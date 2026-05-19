@@ -133,7 +133,12 @@ export function Login() {
                 <input type="checkbox" />
                 <span>로그인 상태 유지</span>
               </label>
-              <span className="text-slate-400 cursor-not-allowed">비밀번호 찾기</span>
+              <Link
+                to={`/forgot-password?account=${userType === 'vet' ? 'vet' : 'user'}`}
+                className="text-blue-600 hover:underline"
+              >
+                비밀번호 찾기
+              </Link>
             </div>
 
             {/* 로그인 버튼 */}

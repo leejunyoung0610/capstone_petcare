@@ -33,6 +33,8 @@ import {
   FileText,
   Eye as EyeIcon,
   X as CloseIcon,
+  Send,
+  MessageSquare,
 } from "lucide-react";
 import useAuthStore from "../../stores/authStore";
 import {
@@ -46,6 +48,8 @@ import {
   approveAdminVet,
   rejectAdminVet,
   patchAdminReport,
+  getAdminReportMessages,
+  sendAdminReportMessage,
 } from "../../api/admin";
 
 import { serverOrigin } from "../../api/client";
@@ -112,9 +116,21 @@ interface AdminReportRow {
   id: number;
   reporter_email?: string | null;
   target_type: string;
+  target_user_id?: number | null;
+  target_vet_id?: number | null;
   target_label: string;
   reason: string;
   status: string;
+  admin_note?: string | null;
+  created_at: string;
+}
+
+interface ReportMessageRow {
+  id: number;
+  sender_role: string;
+  audience: string;
+  body: string;
+  email_sent: boolean;
   created_at: string;
 }
 
@@ -156,6 +172,14 @@ export function AdminDashboard() {
   const [reviewLoading, setReviewLoading] = useState(false);
   const [showRejectInput, setShowRejectInput] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
+
+  const [expandedReportId, setExpandedReportId] = useState<number | null>(null);
+  const [reportMessages, setReportMessages] = useState<Record<number, ReportMessageRow[]>>({});
+  const [msgDraft, setMsgDraft] = useState({
+    audience: "reporter" as "reporter" | "subject" | "internal",
+    body: "",
+    send_email: true,
+  });
 
   const loadStats = useCallback(async () => {
     const data = await getAdminStats(90);
@@ -226,11 +250,20 @@ export function AdminDashboard() {
     navigate("/login", { replace: true });
   };
 
-  const handleSuspendUser = async (id: number) => {
+  const handleSuspendUser = async (userId: number, uiLockId?: number) => {
+    const reason = window.prompt(
+      "정지 사유를 입력하세요.\n※ 로그인 화면 안내에 포함되며, 문의 채널도 함께 표시됩니다.",
+    );
+    if (reason === null) return;
+    const trimmed = reason.trim();
+    if (!trimmed) {
+      window.alert("정지 사유는 필수입니다.");
+      return;
+    }
     if (!window.confirm("이 보호자 계정을 정지할까요?")) return;
-    setActionId(id);
+    setActionId(uiLockId ?? userId);
     try {
-      await suspendAdminUser(id);
+      await suspendAdminUser(userId, trimmed);
       await refreshAfterMutation();
     } catch (e: unknown) {
       const msg =
@@ -243,11 +276,11 @@ export function AdminDashboard() {
     }
   };
 
-  const handleDeleteUser = async (id: number) => {
+  const handleDeleteUser = async (userId: number, uiLockId?: number) => {
     if (!window.confirm("계정을 삭제합니다. 연관 데이터도 삭제될 수 있습니다. 계속할까요?")) return;
-    setActionId(id);
+    setActionId(uiLockId ?? userId);
     try {
-      await deleteAdminUser(id);
+      await deleteAdminUser(userId);
       await refreshAfterMutation();
     } catch (e: unknown) {
       const msg =
@@ -347,6 +380,65 @@ export function AdminDashboard() {
     } finally {
       setActionId(null);
     }
+  };
+
+  const loadReportThread = async (reportId: number) => {
+    const msgs = await getAdminReportMessages(reportId);
+    setReportMessages((prev) => ({ ...prev, [reportId]: msgs }));
+  };
+
+  const toggleReportThread = async (reportId: number) => {
+    if (expandedReportId === reportId) {
+      setExpandedReportId(null);
+      return;
+    }
+    setExpandedReportId(reportId);
+    try {
+      await loadReportThread(reportId);
+    } catch {
+      window.alert("대화 내역을 불러오지 못했습니다.");
+    }
+  };
+
+  const handleSendReportMessage = async (reportId: number) => {
+    if (!msgDraft.body.trim()) {
+      window.alert("메시지 내용을 입력해 주세요.");
+      return;
+    }
+    setActionId(reportId);
+    try {
+      await sendAdminReportMessage(reportId, {
+        audience: msgDraft.audience,
+        body: msgDraft.body.trim(),
+        send_email: msgDraft.send_email,
+      });
+      setMsgDraft((p) => ({ ...p, body: "" }));
+      await loadReportThread(reportId);
+      await loadReports();
+    } catch (e: unknown) {
+      const detail =
+        typeof e === "object" && e !== null && "response" in e
+          ? (e as { response?: { data?: { detail?: string } } }).response?.data?.detail
+          : "메시지 전송에 실패했습니다.";
+      window.alert(typeof detail === "string" ? detail : "메시지 전송에 실패했습니다.");
+    } finally {
+      setActionId(null);
+    }
+  };
+
+  const audienceLabel = (a: string) => {
+    if (a === "reporter") return "신고자";
+    if (a === "subject") return "피신고 대상";
+    if (a === "internal") return "내부 메모";
+    return a;
+  };
+
+  const senderRoleLabel = (role: string) => {
+    if (role === "admin") return "관리자";
+    if (role === "user") return "신고자";
+    if (role === "vet") return "수의사";
+    if (role === "system") return "시스템";
+    return role;
   };
 
   const userGrowthChart = useMemo(
@@ -457,11 +549,12 @@ export function AdminDashboard() {
         <div className="space-y-1 border-t border-slate-100 p-2">
           <button
             type="button"
-            className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-slate-600 transition-colors hover:bg-slate-100"
-            onClick={() => window.alert("시스템 설정 화면은 추후 연동됩니다.")}
+            disabled
+            title="준비 중입니다. 추후 연동 예정입니다."
+            className="flex w-full cursor-not-allowed items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-slate-400 opacity-60"
           >
             <Settings className="h-4 w-4" />
-            <span>시스템 설정</span>
+            <span>시스템 설정 (준비 중)</span>
           </button>
           <button
             type="button"
@@ -933,7 +1026,12 @@ export function AdminDashboard() {
           {!loading && activeTab === "reports" && (
             <div className="space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <h2 className="text-sm font-bold text-slate-900">신고 내역</h2>
+                <div>
+                  <h2 className="text-sm font-bold text-slate-900">신고 · 관리자 소통</h2>
+                  <p className="text-xs text-slate-500 mt-1">
+                    신고자·피신고자와 대화한 뒤 필요 시 「사용자 관리」 탭에서 계정 정지를 검토하세요.
+                  </p>
+                </div>
                 <select
                   className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs focus:border-blue-500 focus:outline-none"
                   value={reportStatus}
@@ -949,8 +1047,9 @@ export function AdminDashboard() {
               {reports.map((report) => (
                 <div key={report.id} className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
                   <div className="flex flex-col items-start justify-between gap-4 sm:flex-row">
-                    <div>
+                    <div className="flex-1">
                       <div className="mb-2 flex flex-wrap items-center gap-2">
+                        <span className="text-xs font-bold text-slate-400">#{report.id}</span>
                         <span
                           className={`rounded-full px-2 py-0.5 text-xs font-semibold ${report.status === "pending"
                             ? "bg-orange-100 text-orange-700"
@@ -979,6 +1078,8 @@ export function AdminDashboard() {
                         </p>
                         <p>
                           <span className="font-medium">대상:</span> {report.target_label}
+                          {report.target_vet_id ? ` (수의사 ID ${report.target_vet_id})` : ""}
+                          {report.target_user_id ? ` (사용자 ID ${report.target_user_id})` : ""}
                         </p>
                         <p>
                           <span className="font-medium">사유:</span> {report.reason}
@@ -989,6 +1090,14 @@ export function AdminDashboard() {
                       </div>
                     </div>
                     <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        className="inline-flex items-center gap-1 rounded-lg border border-blue-300 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-100"
+                        onClick={() => toggleReportThread(report.id)}
+                      >
+                        <MessageSquare className="h-3.5 w-3.5" />
+                        {expandedReportId === report.id ? "대화 닫기" : "대화 열기"}
+                      </button>
                       {report.status === "pending" && (
                         <button
                           type="button"
@@ -1021,6 +1130,82 @@ export function AdminDashboard() {
                       )}
                     </div>
                   </div>
+
+                  {expandedReportId === report.id && (
+                    <div className="mt-4 border-t border-slate-100 pt-4 space-y-3">
+                      <div className="max-h-64 overflow-y-auto space-y-2">
+                        {(reportMessages[report.id] ?? []).map((m) => (
+                          <div
+                            key={m.id}
+                            className={`rounded-lg p-3 text-xs ${m.audience === "internal"
+                              ? "bg-amber-50 border border-amber-100"
+                              : "bg-slate-50 border border-slate-100"
+                              }`}
+                          >
+                            <div className="flex flex-wrap justify-between gap-1 text-slate-500 mb-1">
+                              <span>
+                                {senderRoleLabel(m.sender_role)} · {audienceLabel(m.audience)}
+                                {m.email_sent ? " · 이메일 발송됨" : ""}
+                              </span>
+                              <span>
+                                {format(addHours(new Date(m.created_at), 9), "MM-dd HH:mm")}
+                              </span>
+                            </div>
+                            <p className="text-slate-800 whitespace-pre-wrap">{m.body}</p>
+                          </div>
+                        ))}
+                        {(reportMessages[report.id] ?? []).length === 0 && (
+                          <p className="text-xs text-slate-400 text-center py-4">아직 메시지가 없습니다.</p>
+                        )}
+                      </div>
+
+                      <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 space-y-2">
+                        <div className="flex flex-wrap gap-2 items-center">
+                          <label className="text-xs font-semibold text-slate-600">수신:</label>
+                          <select
+                            className="rounded border border-slate-300 px-2 py-1 text-xs"
+                            value={msgDraft.audience}
+                            onChange={(e) =>
+                              setMsgDraft((p) => ({
+                                ...p,
+                                audience: e.target.value as "reporter" | "subject" | "internal",
+                              }))
+                            }
+                          >
+                            <option value="reporter">신고자 (앱 + 이메일)</option>
+                            <option value="subject">피신고 대상 (앱/이메일)</option>
+                            <option value="internal">내부 메모 (관리자만)</option>
+                          </select>
+                          <label className="flex items-center gap-1 text-xs text-slate-600">
+                            <input
+                              type="checkbox"
+                              checked={msgDraft.send_email}
+                              onChange={(e) =>
+                                setMsgDraft((p) => ({ ...p, send_email: e.target.checked }))
+                              }
+                              disabled={msgDraft.audience === "internal"}
+                            />
+                            이메일 발송
+                          </label>
+                        </div>
+                        <textarea
+                          rows={3}
+                          value={msgDraft.body}
+                          onChange={(e) => setMsgDraft((p) => ({ ...p, body: e.target.value }))}
+                          placeholder="신고자에게 확인 요청, 수의사에게 주의 안내 등"
+                          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm resize-none"
+                        />
+                        <button
+                          type="button"
+                          disabled={actionId === report.id}
+                          onClick={() => handleSendReportMessage(report.id)}
+                          className="inline-flex items-center gap-1 rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+                        >
+                          <Send className="h-3.5 w-3.5" /> 메시지 보내기
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
               {reports.length === 0 && (

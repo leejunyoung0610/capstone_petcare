@@ -61,6 +61,7 @@ LAN 사설 대역 origin 을 정규식으로 허용:
 - 결정 우선순위: ① POST body 의 `redirect_uri` → ② Referer origin → ③ `.env` fallback
 - `KakaoCallbackRequest` 에 optional `redirect_uri` 추가
 - 프론트 `KakaoCallback.tsx` 가 `window.location.origin + /auth/kakao/callback` 을 명시적으로 같이 보냄
+- **로컬에서 콘솔 등록이 번거로우면** `.env` 에 `KAKAO_REDIRECT_USE_REFERER=false` → 인가 요청 시 항상 `KAKAO_REDIRECT_URI` 만 사용 (항상 `http://localhost:5173/...` 같은 **한 주소**로만 접속할 때 유효)
 
 이렇게 해서 **PC (localhost) / 휴대폰 (LAN IP) 동일 코드** 로 카카오 로그인 동작.
 

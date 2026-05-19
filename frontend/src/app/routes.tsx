@@ -5,6 +5,8 @@ import AppShell from '../components/layout/AppShell';
 
 import { Home } from './pages/Home';
 import { Login } from './pages/Login';
+import { ForgotPassword } from './pages/ForgotPassword';
+import { ResetPassword } from './pages/ResetPassword';
 import { VetSearch } from './pages/VetSearch';
 import { OpinionRequest } from './pages/OpinionRequest';
 import { MyPage } from './pages/MyPage';
@@ -38,6 +40,9 @@ import DiagnoseResult from '../pages/diagnosis/DiagnoseResult';
 import DiagnosisHistory from '../pages/diagnosis/DiagnosisHistory';
 import PetDetail from '../pages/pets/PetDetail';
 import Report from '../pages/Report';
+import ReportHistory from '../pages/ReportHistory';
+import ReportDetail from '../pages/ReportDetail';
+import VetReportMessages from '../pages/vet/VetReportMessages';
 
 function ProtectedLayout() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
@@ -69,6 +74,8 @@ function AdminLayout() {
 export const router = createBrowserRouter([
   { path: '/', Component: Home },
   { path: '/login', Component: Login },
+  { path: '/forgot-password', Component: ForgotPassword },
+  { path: '/reset-password', Component: ResetPassword },
   { path: '/auth/kakao/callback', Component: KakaoCallback },
   { path: '/register', Component: Register },
   { path: '/vet/register', Component: VetRegister },
@@ -83,6 +90,8 @@ export const router = createBrowserRouter([
       { path: 'opinions/:opinionId/write', Component: VetOpinionWrite },
       { path: 'opinions/:opinionId/complete', Component: VetOpinionComplete },
       { path: 'diagnosis/:diagnosisId', Component: VetDiagnosisDetail },
+      { path: 'report-messages', Component: VetReportMessages },
+      { path: 'report-messages/:reportId', Component: VetReportMessages },
     ]
   },
 
@@ -121,6 +130,8 @@ export const router = createBrowserRouter([
           { path: '/announcements', Component: Announcements },
           { path: '/announcements/:id', Component: AnnouncementDetail },
           { path: '/report', Component: Report },
+          { path: '/report/history', Component: ReportHistory },
+          { path: '/report/history/:id', Component: ReportDetail },
           { path: '/payment/toss/success', Component: PaymentTossSuccess },
           { path: '/payment/toss/fail', Component: PaymentTossFail },
         ],

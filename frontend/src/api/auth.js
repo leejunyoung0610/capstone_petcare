@@ -68,6 +68,12 @@ export const authAPI = {
     });
   },
 
+  // 비밀번호 재설정
+  forgotPassword: (email, accountType = 'user') =>
+    apiClient.post('/auth/password/forgot', { email, account_type: accountType }),
+
+  resetPassword: (data) => apiClient.post('/auth/password/reset', data),
+
   // 토큰 재발급
   refresh: () => {
     const refreshToken = localStorage.getItem('refreshToken');

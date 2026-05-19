@@ -6,8 +6,8 @@ export const getAdminStats = (days = 7) =>
 export const getAdminUsers = (params = {}) =>
   apiClient.get('/admin/users', { params }).then((r) => r.data);
 
-export const suspendAdminUser = (userId) =>
-  apiClient.patch(`/admin/users/${userId}/suspend`).then((r) => r.data);
+export const suspendAdminUser = (userId, reason) =>
+  apiClient.patch(`/admin/users/${userId}/suspend`, { reason }).then((r) => r.data);
 
 export const deleteAdminUser = (userId) =>
   apiClient.delete(`/admin/users/${userId}`);
@@ -31,3 +31,9 @@ export const getAdminReports = (params = {}) =>
 
 export const patchAdminReport = (reportId, data) =>
   apiClient.patch(`/admin/reports/${reportId}`, data).then((r) => r.data);
+
+export const getAdminReportMessages = (reportId) =>
+  apiClient.get(`/admin/reports/${reportId}/messages`).then((r) => r.data);
+
+export const sendAdminReportMessage = (reportId, data) =>
+  apiClient.post(`/admin/reports/${reportId}/messages`, data).then((r) => r.data);

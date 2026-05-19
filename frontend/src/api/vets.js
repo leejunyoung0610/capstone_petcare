@@ -57,8 +57,23 @@ export const listRegisteredVets = async (params = {}) => {
   return response.data;
 };
 
+/** 단일 등록 수의사 카드 (소견 요청 등) */
+export const getRegisteredVetById = async (vetId) => {
+  const response = await apiClient.get(`/vets/registered/${vetId}`);
+  return response.data;
+};
+
 // AI 결과 페이지 등에서 보여줄 짧은 추천 수의사 목록 (기본 3명)
 export const getRecommendedVets = async (params = {}) => {
   const response = await apiClient.get('/vets/recommended', { params });
   return response.data;
 };
+
+export const getVetReportMessages = () =>
+  apiClient.get('/vets/me/report-messages').then((r) => r.data);
+
+export const getVetReportThread = (reportId) =>
+  apiClient.get(`/vets/me/report-messages/${reportId}/thread`).then((r) => r.data);
+
+export const replyVetReportMessage = (reportId, body) =>
+  apiClient.post(`/vets/me/report-messages/${reportId}/reply`, { body }).then((r) => r.data);

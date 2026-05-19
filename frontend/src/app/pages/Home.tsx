@@ -184,7 +184,7 @@ export function Home() {
                 icon: <Sparkles className="w-7 h-7 text-blue-600" />,
                 bg: "bg-blue-50",
                 title: "AI 멀티태스크 분석",
-                desc: "강아지 10종, 고양이 5종 안구 질환을 동시에 검사하고 GradCAM 히트맵으로 병변 위치를 시각화합니다",
+                desc: "강아지 10개·고양이 5개 라벨을 동시 검사합니다. 질환백과에는 고양이 관련 설명 6건이 있습니다. GradCAM으로 병변 위치를 시각화합니다.",
               },
               {
                 icon: <Search className="w-7 h-7 text-green-600" />,

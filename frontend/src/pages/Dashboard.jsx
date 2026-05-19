@@ -70,9 +70,9 @@ export default function Dashboard() {
           {
             icon: null,
             title: '3. 결과 · PDF',
-            desc: '결과 페이지에서 보고서를 내려받을 수 있어요.',
-            link: '/pets',
-            label: '반려동물 목록 →',
+            desc: '진단 이력에서 결과를 확인하고 PDF 보고서를 내려받을 수 있어요.',
+            link: '/diagnosis/history',
+            label: '진단 이력 · PDF →',
           },
         ].map((item) => (
           <div
@@ -89,7 +89,13 @@ export default function Dashboard() {
             </div>
             <p className="text-sm text-slate-500 mb-3 leading-relaxed">{item.desc}</p>
             <Link to={item.link}>
-              <button className="w-full py-2 border border-slate-300 rounded-lg text-sm text-slate-600 hover:bg-slate-50">
+              <button
+                className={
+                  item.title.startsWith('3.')
+                    ? 'w-full py-2.5 rounded-lg text-sm font-medium bg-blue-600 text-white hover:bg-blue-700'
+                    : 'w-full py-2 border border-slate-300 rounded-lg text-sm text-slate-600 hover:bg-slate-50'
+                }
+              >
                 {item.label}
               </button>
             </Link>

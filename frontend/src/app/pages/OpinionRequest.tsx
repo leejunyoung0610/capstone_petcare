@@ -4,7 +4,7 @@ import { getMyPets } from "../../api/pets";
 import { getMyDiagnoses } from "../../api/diagnosis";
 import { prepareTossPayment } from "../../api/payments";
 import { loadTossPayments } from "@tosspayments/tosspayments-sdk";
-import { Header } from "../components/Header";
+import { getRegisteredVetById } from "../../api/vets";
 import { Upload, X, AlertCircle, FileText, CheckCircle } from "lucide-react";
 import { format, addHours } from "date-fns";
 
@@ -39,11 +39,35 @@ export function OpinionRequest() {
   const [isLoading, setIsLoading] = useState(false);
   const [agreed1, setAgreed1] = useState(false);
   const [agreed2, setAgreed2] = useState(false);
+  const [vetCard, setVetCard] = useState<{
+    name: string;
+    hospital_name?: string | null;
+    specialty?: string | null;
+    opinion_fee_won?: number;
+  } | null>(null);
+
+  const [vetCardError, setVetCardError] = useState(false);
 
   useEffect(() => {
     getMyPets().then(setPets);
     getMyDiagnoses().then(setDiagnoses);
-  }, []);
+    const vid = vetId ? parseInt(vetId, 10) : NaN;
+    setVetCardError(false);
+    if (!Number.isFinite(vid)) return;
+    getRegisteredVetById(vid)
+      .then((row: Record<string, unknown>) =>
+        setVetCard({
+          name: String(row.name ?? "수의사"),
+          hospital_name: row.hospital_name ? String(row.hospital_name) : null,
+          specialty: row.specialty ? String(row.specialty) : null,
+          opinion_fee_won: typeof row.opinion_fee_won === "number" ? row.opinion_fee_won : undefined,
+        }),
+      )
+      .catch(() => {
+        setVetCard(null);
+        setVetCardError(true);
+      });
+  }, [vetId]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -98,10 +122,9 @@ export function OpinionRequest() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <Header />
+    <div className="min-h-screen bg-slate-50 pb-8">
 
-      <div className="max-w-3xl mx-auto px-4 py-12">
+      <div className="max-w-3xl mx-auto px-4 py-8 lg:py-12">
         <h1 className="text-2xl font-bold text-slate-900 mb-1">수의사 원격 소견 요청</h1>
         <p className="text-sm text-slate-500 mb-8">수의사가 검토 후 24시간 이내 소견을 제공합니다</p>
 
@@ -113,9 +136,22 @@ export function OpinionRequest() {
                 🏥
               </div>
               <div>
-                <p className="font-bold text-slate-900">김동물 수의사</p>
-                <p className="text-sm text-slate-500">행복동물병원 · 안과 전문 · 경력 15년</p>
-                <p className="text-sm text-blue-600 font-bold mt-1">상담료: 30,000원</p>
+                <p className="font-bold text-slate-900">
+                  {vetCardError
+                    ? "수의사 정보를 불러오지 못했습니다"
+                    : vetCard
+                      ? `${vetCard.name} 수의사`
+                      : "수의사 정보 불러오는 중…"}
+                </p>
+                <p className="text-sm text-slate-500">
+                  {[vetCard?.hospital_name, vetCard?.specialty].filter(Boolean).join(" · ") || "병원 프로필을 확인 중입니다"}
+                </p>
+                <p className="text-sm text-blue-600 font-bold mt-1">
+                  상담료:{" "}
+                  {vetCard?.opinion_fee_won != null
+                    ? `${vetCard.opinion_fee_won.toLocaleString("ko-KR")}원`
+                    : "—"}
+                </p>
               </div>
             </div>
           </div>

@@ -70,6 +70,7 @@ interface Hospital {
   business_hours: string | null;
   rating: number | null;
   review_count: number;
+  opinion_fee_won?: number | null;
 }
 
 const apiKey = import.meta.env.VITE_KAKAO_MAP_KEY as string | undefined;
@@ -331,6 +332,7 @@ export function VetSearch() {
           business_hours: v.business_hours || null,
           rating: v.rating ?? null,
           review_count: v.review_count ?? 0,
+          opinion_fee_won: v.opinion_fee_won ?? null,
         }));
         setGanadiHospitals(mapped);
         setGanadiLoaded(true);
@@ -683,6 +685,15 @@ function HospitalCard({
                 <span className="text-sm font-bold text-slate-900">{hospital.rating.toFixed(1)}</span>
                 <span className="text-xs text-slate-400">({hospital.review_count} 리뷰)</span>
               </div>
+            ) : null}
+
+            {hospital.is_ganadi && hospital.opinion_fee_won != null ? (
+              <p className="mb-1 text-[11px] text-slate-500">
+                원격 소견{" "}
+                <span className="font-semibold text-slate-700">
+                  {hospital.opinion_fee_won.toLocaleString("ko-KR")}원
+                </span>
+              </p>
             ) : null}
 
             <div className="space-y-1 text-sm text-slate-500">

@@ -1,13 +1,20 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 import { ChevronLeft } from 'lucide-react';
 import { submitReport } from '../api/reports';
 
 export default function Report() {
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+    const initialVetId = searchParams.get('vetId');
+    const initialUserId = searchParams.get('userId');
+    const initialLabel = searchParams.get('label') || '';
+
     const [form, setForm] = useState({
-        target_type: '',
-        target_label: '',
+        target_type: initialVetId ? 'vet' : initialUserId ? 'user' : '',
+        target_label: initialLabel,
+        target_vet_id: initialVetId ? Number(initialVetId) : '',
+        target_user_id: initialUserId ? Number(initialUserId) : '',
         reason: '',
     });
     const [submitting, setSubmitting] = useState(false);
@@ -24,9 +31,20 @@ export default function Report() {
         if (!form.reason.trim()) { alert('신고 사유를 입력해주세요.'); return; }
         setSubmitting(true);
         try {
-            await submitReport(form);
-            alert('신고가 접수되었습니다. 검토 후 조치하겠습니다.');
-            navigate(-1);
+            const payload = {
+                target_type: form.target_type,
+                target_label: form.target_label.trim(),
+                reason: form.reason.trim(),
+            };
+            if (form.target_type === 'vet' && form.target_vet_id) {
+                payload.target_vet_id = Number(form.target_vet_id);
+            }
+            if (form.target_type === 'user' && form.target_user_id) {
+                payload.target_user_id = Number(form.target_user_id);
+            }
+            const res = await submitReport(payload);
+            alert('신고가 접수되었습니다. 관리자와의 대화 공간이 열렸습니다.');
+            navigate(`/report/history/${res.id}`);
         } catch {
             alert('신고 접수에 실패했습니다. 다시 시도해주세요.');
         } finally {
@@ -36,7 +54,6 @@ export default function Report() {
 
     return (
         <div className="min-h-screen bg-slate-100 pb-24">
-            {/* 상단 헤더 */}
             <div className="bg-white border-b border-slate-200 px-4 py-3 flex items-center gap-3">
                 <button onClick={() => navigate(-1)} className="p-1 rounded-lg hover:bg-slate-100">
                     <ChevronLeft className="w-5 h-5 text-slate-700" />
@@ -46,7 +63,6 @@ export default function Report() {
 
             <div className="max-w-lg mx-auto px-4 py-5 space-y-4">
 
-                {/* 신고 대상 유형 */}
                 <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
                     <label className="block text-sm font-bold text-slate-900 mb-3">
                         신고 대상 <span className="text-red-500">*</span>
@@ -70,7 +86,6 @@ export default function Report() {
                     </div>
                 </div>
 
-                {/* 신고 대상 이름 */}
                 <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
                     <label className="block text-sm font-bold text-slate-900 mb-3">
                         신고 대상 이름 <span className="text-red-500">*</span>
@@ -80,7 +95,39 @@ export default function Report() {
                         className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500" />
                 </div>
 
-                {/* 신고 사유 */}
+                {form.target_type === 'vet' && (
+                    <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
+                        <label className="block text-sm font-bold text-slate-900 mb-2">
+                            수의사 ID (선택, 알고 있을 때)
+                        </label>
+                        <input
+                            name="target_vet_id"
+                            type="number"
+                            value={form.target_vet_id}
+                            onChange={handleChange}
+                            placeholder="수의사 프로필 ID"
+                            className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm"
+                        />
+                        <p className="text-xs text-slate-500 mt-2">ID를 입력하면 관리자가 해당 수의사에게 직접 안내할 수 있습니다.</p>
+                    </div>
+                )}
+
+                {form.target_type === 'user' && (
+                    <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
+                        <label className="block text-sm font-bold text-slate-900 mb-2">
+                            사용자 ID (선택)
+                        </label>
+                        <input
+                            name="target_user_id"
+                            type="number"
+                            value={form.target_user_id}
+                            onChange={handleChange}
+                            placeholder="사용자 ID"
+                            className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm"
+                        />
+                    </div>
+                )}
+
                 <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
                     <label className="block text-sm font-bold text-slate-900 mb-3">
                         신고 사유 <span className="text-red-500">*</span>
@@ -90,13 +137,11 @@ export default function Report() {
                         className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none" />
                 </div>
 
-                {/* 안내 문구 */}
                 <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
                     <span>⚠️</span>
-                    <p>허위 신고는 제재를 받을 수 있습니다. 신고 내용은 관리자 검토 후 처리됩니다.</p>
+                    <p>허위 신고는 제재를 받을 수 있습니다. 접수 후 관리자와 대화할 수 있는 공간이 열리며, 이메일로도 안내를 받을 수 있습니다.</p>
                 </div>
 
-                {/* 제출 버튼 */}
                 <button type="submit" onClick={handleSubmit} disabled={submitting}
                     className="w-full py-3 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 disabled:opacity-50">
                     {submitting ? '접수 중...' : '신고 접수하기'}
