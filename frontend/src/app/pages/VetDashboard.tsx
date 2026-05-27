@@ -269,17 +269,6 @@ export function VetDashboard() {
                 ? "완료된 소견"
                 : "활동 통계"}
           </h1>
-          <button
-            type="button"
-            className="relative rounded-lg p-2 text-slate-500 hover:bg-slate-100"
-            aria-label="알림"
-            onClick={() => window.alert("알림 목록은 /api/notifications 연동 시 표시할 수 있습니다.")}
-          >
-            <Bell className="h-4 w-4" />
-            {(summary?.pending_count ?? 0) > 0 && (
-              <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-red-500" />
-            )}
-          </button>
         </header>
 
         <div className="space-y-5 p-6">

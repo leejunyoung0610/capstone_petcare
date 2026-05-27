@@ -44,6 +44,7 @@ import {
   getAdminVetDetail,
   getAdminReports,
   suspendAdminUser,
+  unsuspendAdminUser,
   deleteAdminUser,
   approveAdminVet,
   rejectAdminVet,
@@ -271,6 +272,23 @@ export function AdminDashboard() {
           ? (e as { response?: { data?: { detail?: string } } }).response?.data?.detail
           : "정지 처리에 실패했습니다.";
       window.alert(typeof msg === "string" ? msg : "정지 처리에 실패했습니다.");
+    } finally {
+      setActionId(null);
+    }
+  };
+
+  const handleUnsuspendUser = async (userId: number, uiLockId?: number) => {
+    if (!window.confirm("이 보호자 계정의 정지를 해제할까요?")) return;
+    setActionId(uiLockId ?? userId);
+    try {
+      await unsuspendAdminUser(userId);
+      await refreshAfterMutation();
+    } catch (e: unknown) {
+      const msg =
+        typeof e === "object" && e !== null && "response" in e
+          ? (e as { response?: { data?: { detail?: string } } }).response?.data?.detail
+          : "정지 해제에 실패했습니다.";
+      window.alert(typeof msg === "string" ? msg : "정지 해제에 실패했습니다.");
     } finally {
       setActionId(null);
     }
@@ -578,17 +596,6 @@ export function AdminDashboard() {
                   ? "수의사 관리"
                   : "신고 관리"}
           </h1>
-          <button
-            type="button"
-            className="relative rounded-lg p-2 text-slate-500 hover:bg-slate-100"
-            aria-label="알림"
-            onClick={() => navigate("/notifications")}
-          >
-            <Bell className="h-4 w-4" />
-            {(stats?.open_reports_count ?? 0) > 0 && (
-              <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-red-500" />
-            )}
-          </button>
         </header>
 
         <div className="space-y-5 p-6">
@@ -907,14 +914,25 @@ export function AdminDashboard() {
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2">
-                            <button
-                              type="button"
-                              className="text-xs font-medium text-amber-700 hover:text-amber-800 disabled:opacity-50"
-                              disabled={u.is_suspended || actionId === u.id}
-                              onClick={() => handleSuspendUser(u.id)}
-                            >
-                              정지
-                            </button>
+                            {u.is_suspended ? (
+                              <button
+                                type="button"
+                                className="text-xs font-medium text-green-700 hover:text-green-800 disabled:opacity-50"
+                                disabled={actionId === u.id}
+                                onClick={() => handleUnsuspendUser(u.id)}
+                              >
+                                정지해제
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                className="text-xs font-medium text-amber-700 hover:text-amber-800 disabled:opacity-50"
+                                disabled={actionId === u.id}
+                                onClick={() => handleSuspendUser(u.id)}
+                              >
+                                정지
+                              </button>
+                            )}
                             <span className="text-slate-300">|</span>
                             <button
                               type="button"

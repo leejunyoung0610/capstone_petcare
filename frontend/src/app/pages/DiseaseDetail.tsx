@@ -1,5 +1,4 @@
 import { useNavigate, useParams, Link } from "react-router";
-import { Header } from "../components/Header";
 import { ArrowLeft, AlertCircle } from "lucide-react";
 import diseases from "../../data/diseases";
 
@@ -18,7 +17,6 @@ export function DiseaseDetail() {
   if (!disease) {
     return (
       <div className="min-h-screen bg-slate-50">
-        <Header />
         <div className="flex flex-col items-center justify-center min-h-[40vh] text-center px-4">
           <p className="text-6xl mb-4">⚠️</p>
           <h2 className="text-2xl font-bold text-slate-900 mb-2">질환 정보를 찾을 수 없습니다</h2>
@@ -35,7 +33,6 @@ export function DiseaseDetail() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <Header />
 
       <div className="max-w-3xl mx-auto px-4 py-12">
         <button

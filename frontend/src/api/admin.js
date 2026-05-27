@@ -9,6 +9,9 @@ export const getAdminUsers = (params = {}) =>
 export const suspendAdminUser = (userId, reason) =>
   apiClient.patch(`/admin/users/${userId}/suspend`, { reason }).then((r) => r.data);
 
+export const unsuspendAdminUser = (userId) =>
+  apiClient.patch(`/admin/users/${userId}/unsuspend`).then((r) => r.data);
+
 export const deleteAdminUser = (userId) =>
   apiClient.delete(`/admin/users/${userId}`);
 

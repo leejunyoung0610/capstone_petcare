@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { getMyOpinions, cancelOpinion } from "../../api/opinions";
-import { Header } from "../components/Header";
 import { MessageCircle, Calendar, Eye, ArrowLeft } from "lucide-react";
 
 interface Opinion {
@@ -51,6 +50,7 @@ export function OpinionList() {
   const [opinions, setOpinions] = useState<Opinion[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<FilterTab>("전체");
+  const navigate = useNavigate();
 
   const handleCancel = async (opinionId: number) => {
     if (!window.confirm("소견 요청을 취소하시겠어요?")) return;
@@ -81,7 +81,6 @@ export function OpinionList() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <Header />
 
       <div className="max-w-2xl mx-auto px-4 py-12">
         <button

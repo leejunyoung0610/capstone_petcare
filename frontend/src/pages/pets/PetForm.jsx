@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
-import { uploadPetProfileImage } from '../../api/pets';
+import { uploadPetProfileImage, deletePetProfileImage } from '../../api/pets';
 import usePetStore from '../../stores/petStore';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
@@ -171,7 +171,15 @@ export default function PetForm() {
                 {profileImagePreview && (
                   <button
                     type="button"
-                    onClick={() => { setProfileImage(null); setProfileImagePreview(null); }}
+                    onClick={async () => {
+                      if (isEdit && id) {
+                        try {
+                          await deletePetProfileImage(parseInt(id));
+                        } catch { }
+                      }
+                      setProfileImage(null);
+                      setProfileImagePreview(null);
+                    }}
                     className="ml-2 text-sm text-red-400 hover:text-red-600"
                   >
                     삭제

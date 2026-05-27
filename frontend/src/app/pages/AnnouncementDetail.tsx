@@ -1,5 +1,4 @@
 import { useNavigate, useParams } from "react-router";
-import { Header } from "../components/Header";
 import { ArrowLeft } from "lucide-react";
 
 const mockAnnouncements = [
@@ -49,7 +48,6 @@ export function AnnouncementDetail() {
   if (!item) {
     return (
       <div className="min-h-screen bg-slate-50">
-        <Header />
         <div className="flex flex-col items-center justify-center min-h-[40vh] text-center px-4">
           <p className="text-6xl mb-4">⚠️</p>
           <h2 className="text-2xl font-bold text-slate-900 mb-2">게시글을 찾을 수 없습니다</h2>
@@ -66,7 +64,6 @@ export function AnnouncementDetail() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <Header />
 
       <div className="max-w-3xl mx-auto px-4 py-12">
         <button
@@ -79,11 +76,10 @@ export function AnnouncementDetail() {
 
         <div className="bg-white border border-slate-200 rounded-xl p-8 shadow-sm">
           <div className="mb-6">
-            <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${
-              item.type === "NOTICE"
+            <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${item.type === "NOTICE"
                 ? "bg-blue-50 text-blue-700"
                 : "bg-green-50 text-green-700"
-            }`}>
+              }`}>
               {item.type === "NOTICE" ? "공지" : "FAQ"}
             </span>
             <h1 className="text-xl font-bold text-slate-900 mt-3 mb-2">{item.title}</h1>
@@ -95,15 +91,6 @@ export function AnnouncementDetail() {
           <p className="text-slate-700 leading-relaxed whitespace-pre-line text-sm">
             {item.content}
           </p>
-        </div>
-
-        <div className="mt-6 text-center">
-          <button
-            onClick={() => navigate("/announcements")}
-            className="px-4 py-2 border border-slate-300 rounded-lg text-sm text-slate-600 hover:bg-slate-50"
-          >
-            목록으로 돌아가기
-          </button>
         </div>
       </div>
     </div>

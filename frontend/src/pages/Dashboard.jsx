@@ -77,7 +77,7 @@ export default function Dashboard() {
         ].map((item) => (
           <div
             key={item.title}
-            className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-sm hover:shadow-md transition"
+            className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-sm hover:shadow-md transition flex flex-col"
           >
             <div className="flex items-center gap-2 mb-1.5">
               {item.icon ? (
@@ -87,15 +87,9 @@ export default function Dashboard() {
               )}
               <h3 className="font-bold text-slate-900 text-sm">{item.title}</h3>
             </div>
-            <p className="text-sm text-slate-500 mb-3 leading-relaxed">{item.desc}</p>
+            <p className="text-sm text-slate-500 mb-3 leading-relaxed flex-grow">{item.desc}</p>
             <Link to={item.link}>
-              <button
-                className={
-                  item.title.startsWith('3.')
-                    ? 'w-full py-2.5 rounded-lg text-sm font-medium bg-blue-600 text-white hover:bg-blue-700'
-                    : 'w-full py-2 border border-slate-300 rounded-lg text-sm text-slate-600 hover:bg-slate-50'
-                }
-              >
+              <button className="w-full h-10 border border-slate-300 rounded-lg text-sm text-slate-600 hover:bg-slate-50 flex items-center justify-center">
                 {item.label}
               </button>
             </Link>

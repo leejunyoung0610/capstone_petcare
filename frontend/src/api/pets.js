@@ -42,3 +42,8 @@ export const uploadPetProfileImage = async (petId, file) => {
   });
   return response.data;
 };
+
+// 반려동물 프로필 사진 삭제
+export const deletePetProfileImage = async (petId) => {
+  await apiClient.delete(`/pets/${petId}/profile-image`);
+};

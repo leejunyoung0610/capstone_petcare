@@ -12,7 +12,9 @@ const STATUS_LABEL = {
 
 function formatTime(iso) {
   try {
-    return new Date(iso).toLocaleString('ko-KR');
+    const d = new Date(iso);
+    d.setHours(d.getHours() + 9);
+    return d.toLocaleString('ko-KR');
   } catch {
     return iso;
   }
@@ -103,11 +105,10 @@ export default function ReportDetail() {
           {(report.messages || []).map((m) => (
             <div
               key={m.id}
-              className={`rounded-xl p-3 text-sm ${
-                m.sender_role === 'user'
+              className={`rounded-xl p-3 text-sm ${m.sender_role === 'user'
                   ? 'bg-blue-50 border border-blue-100 ml-6'
                   : 'bg-white border border-slate-200 mr-6'
-              }`}
+                }`}
             >
               <div className="flex justify-between text-xs text-slate-500 mb-1">
                 <span className="font-semibold">{senderLabel(m.sender_role)}</span>
