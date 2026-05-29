@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { matchHospitalsWithGanadi, listRegisteredVets } from "../../api/vets";
 import { loadKakaoMapsSdk } from "../../lib/kakaoMap";
+import { SHOW_OPINION_PAYMENT_UI } from "../../config/features";
 
 /**
  * 카카오맵 기반 병원 찾기.
@@ -687,7 +688,7 @@ function HospitalCard({
               </div>
             ) : null}
 
-            {hospital.is_ganadi && hospital.opinion_fee_won != null ? (
+            {SHOW_OPINION_PAYMENT_UI && hospital.is_ganadi && hospital.opinion_fee_won != null ? (
               <p className="mb-1 text-[11px] text-slate-500">
                 원격 소견{" "}
                 <span className="font-semibold text-slate-700">

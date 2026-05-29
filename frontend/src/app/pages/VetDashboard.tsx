@@ -34,6 +34,7 @@ import {
 import useAuthStore from "../../stores/authStore";
 import { getVetMe, getVetDashboardSummary } from "../../api/vets";
 import { getVetOpinionRequests } from "../../api/opinions";
+import { SHOW_OPINION_PAYMENT_UI } from "../../config/features";
 
 type Tab = "pending" | "completed" | "stats";
 
@@ -241,7 +242,7 @@ export function VetDashboard() {
             className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-slate-600 hover:bg-slate-100"
           >
             <Settings className="h-4 w-4 shrink-0" />
-            {!sidebarCollapsed && <span>프로필 · 상담료</span>}
+            {!sidebarCollapsed && <span>{SHOW_OPINION_PAYMENT_UI ? "프로필 · 상담료" : "프로필"}</span>}
           </Link>
           <button
             type="button"
@@ -285,7 +286,7 @@ export function VetDashboard() {
 
           {!loading && summary && (
             <>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <div className={`grid grid-cols-1 gap-4 sm:grid-cols-2 ${SHOW_OPINION_PAYMENT_UI ? "xl:grid-cols-4" : "xl:grid-cols-3"}`}>
               {[
                 {
                   label: "대기 중",
@@ -308,13 +309,15 @@ export function VetDashboard() {
                   icon: Star,
                   color: "amber" as const,
                 },
-                {
-                  label: "이번 달 수익",
-                  value: `${(summary.revenue_this_month / 1000).toFixed(0)}K`,
-                  sub: `${summary.revenue_this_month.toLocaleString()}원`,
-                  icon: TrendingUp,
-                  color: "purple" as const,
-                },
+                ...(SHOW_OPINION_PAYMENT_UI
+                  ? [{
+                      label: "이번 달 수익",
+                      value: `${(summary.revenue_this_month / 1000).toFixed(0)}K`,
+                      sub: `${summary.revenue_this_month.toLocaleString()}원`,
+                      icon: TrendingUp,
+                      color: "purple" as const,
+                    }]
+                  : []),
               ].map((stat) => (
                 <div key={stat.label} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
                   <div className="mb-3 flex items-center justify-between">
@@ -347,6 +350,7 @@ export function VetDashboard() {
               ))}
             </div>
 
+            {SHOW_OPINION_PAYMENT_UI && (
             <div className="flex flex-col gap-3 rounded-xl border border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-start gap-3">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white shadow-sm">
@@ -377,6 +381,7 @@ export function VetDashboard() {
                 <ChevronRight className="h-4 w-4" />
               </Link>
             </div>
+            )}
             </>
           )}
 
@@ -479,9 +484,11 @@ export function VetDashboard() {
                           ))
                           : null}
                       </div>
-                      <p className="mt-1 text-sm font-bold text-slate-800">
-                        {c.service_fee != null ? `${c.service_fee.toLocaleString()}원` : "—"}
-                      </p>
+                      {SHOW_OPINION_PAYMENT_UI && (
+                        <p className="mt-1 text-sm font-bold text-slate-800">
+                          {c.service_fee != null ? `${c.service_fee.toLocaleString()}원` : "—"}
+                        </p>
+                      )}
                     </div>
                   </div>
                   <div className="rounded-lg border border-green-200 bg-green-50 p-3">
@@ -560,7 +567,8 @@ export function VetDashboard() {
                 </div>
               </div>
 
-              <div className="grid gap-5 md:grid-cols-2">
+              <div className={`grid gap-5 ${SHOW_OPINION_PAYMENT_UI ? "md:grid-cols-2" : "md:grid-cols-1"}`}>
+                {SHOW_OPINION_PAYMENT_UI && (
                 <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
                   <h3 className="mb-4 text-sm font-semibold text-slate-900">수익</h3>
                   <p className="text-sm text-slate-600">
@@ -568,6 +576,7 @@ export function VetDashboard() {
                     (소견 작성 시 입력한 service_fee 합계)
                   </p>
                 </div>
+                )}
                 <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
                   <h3 className="mb-4 text-sm font-semibold text-slate-900">질환별 소견 분포</h3>
                   <div className="h-[180px] w-full">

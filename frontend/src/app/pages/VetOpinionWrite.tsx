@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import { ChevronLeft } from "lucide-react";
 import { writeVetOpinion, updateVetOpinion } from "../../api/opinions";
+import { SHOW_OPINION_PAYMENT_UI } from "../../config/features";
 
 export function VetOpinionWrite() {
   const { opinionId } = useParams<{ opinionId: string }>();
@@ -46,7 +47,9 @@ export function VetOpinionWrite() {
           content: content.trim(),
           recommendation: recommendation.trim() || undefined,
           visit_required: visitRequired,
-          service_fee: serviceFee.trim() ? Number(serviceFee) : undefined,
+          ...(SHOW_OPINION_PAYMENT_UI && serviceFee.trim()
+            ? { service_fee: Number(serviceFee) }
+            : {}),
         });
         window.alert("소견이 수정되었습니다.");
         navigate("/vet/dashboard", { replace: true });
@@ -55,7 +58,9 @@ export function VetOpinionWrite() {
           content: content.trim(),
           recommendation: recommendation.trim() || undefined,
           visit_required: visitRequired,
-          service_fee: serviceFee.trim() ? Number(serviceFee) : undefined,
+          ...(SHOW_OPINION_PAYMENT_UI && serviceFee.trim()
+            ? { service_fee: Number(serviceFee) }
+            : {}),
         });
         navigate(`/vet/opinions/${id}/complete`, {
           replace: true,
@@ -122,6 +127,7 @@ export function VetOpinionWrite() {
             병원 방문 권고
           </label>
         </div>
+        {SHOW_OPINION_PAYMENT_UI && (
         <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
           <label className="mb-2 block text-xs font-semibold text-slate-700">서비스 금액 (원, 선택)</label>
           <input
@@ -133,6 +139,7 @@ export function VetOpinionWrite() {
             placeholder="30000"
           />
         </div>
+        )}
         <button
           type="submit"
           disabled={submitting}
