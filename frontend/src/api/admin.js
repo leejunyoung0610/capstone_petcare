@@ -40,3 +40,15 @@ export const getAdminReportMessages = (reportId) =>
 
 export const sendAdminReportMessage = (reportId, data) =>
   apiClient.post(`/admin/reports/${reportId}/messages`, data).then((r) => r.data);
+
+export const getAdminCollectedSamples = (params = {}) =>
+  apiClient.get('/admin/collected-samples', { params }).then((r) => r.data);
+
+export const getAdminCollectedSampleDetail = (sampleId) =>
+  apiClient.get(`/admin/collected-samples/${sampleId}`).then((r) => r.data);
+
+export const getAdminCollectedSamplesGapStats = () =>
+  apiClient.get('/admin/collected-samples/stats/gap').then((r) => r.data);
+
+export const patchAdminCollectedSample = (sampleId, data) =>
+  apiClient.patch(`/admin/collected-samples/${sampleId}`, data).then((r) => r.data);

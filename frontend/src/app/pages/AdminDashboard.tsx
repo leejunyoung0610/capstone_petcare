@@ -35,6 +35,7 @@ import {
   X as CloseIcon,
   Send,
   MessageSquare,
+  Database,
 } from "lucide-react";
 import useAuthStore from "../../stores/authStore";
 import {
@@ -54,6 +55,7 @@ import {
 } from "../../api/admin";
 
 import { serverOrigin } from "../../api/client";
+import { CollectedSamplesPanel } from "./admin/CollectedSamplesPanel";
 
 function buildFileUrl(path?: string | null) {
   if (!path) return null;
@@ -65,7 +67,7 @@ function isPdfPath(path?: string | null) {
   return !!path && /\.pdf(\?|$)/i.test(path);
 }
 
-type Tab = "overview" | "users" | "vets" | "reports";
+type Tab = "overview" | "users" | "vets" | "reports" | "samples";
 
 interface AdminStats {
   total_users: number;
@@ -512,6 +514,7 @@ export function AdminDashboard() {
       icon: AlertTriangle,
       badge: stats?.open_reports_count,
     },
+    { key: "samples" as const, label: "학습 데이터", icon: Database },
   ];
 
   const maxDog = Math.max(1, ...(stats?.disease_distribution_dog?.map((d) => d.count) ?? [1]));
@@ -594,7 +597,9 @@ export function AdminDashboard() {
                 ? "사용자 관리"
                 : activeTab === "vets"
                   ? "수의사 관리"
-                  : "신고 관리"}
+                  : activeTab === "samples"
+                    ? "학습 데이터 수집"
+                    : "신고 관리"}
           </h1>
         </header>
 
@@ -1231,6 +1236,8 @@ export function AdminDashboard() {
               )}
             </div>
           )}
+
+          {activeTab === "samples" && <CollectedSamplesPanel />}
         </div>
       </main>
 
