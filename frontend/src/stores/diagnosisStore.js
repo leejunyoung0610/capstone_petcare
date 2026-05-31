@@ -10,10 +10,10 @@ const useDiagnosisStore = create((set, get) => ({
   error: null,
 
   // Actions
-  analyzePet: async (petId, imageFile) => {
+  analyzePet: async (petId, imageFile, options = {}) => {
     set({ loading: true, error: null });
     try {
-      const result = await analyzePetEye(petId, imageFile);
+      const result = await analyzePetEye(petId, imageFile, options);
       set({ 
         currentDiagnosis: result,
         diagnoses: [result, ...get().diagnoses],
