@@ -1,17 +1,34 @@
-import { useEffect, useState } from 'react';
-import { useParams, useNavigate, Link } from 'react-router';
+import { useEffect, useMemo, useState } from 'react';
+import { useParams, Link } from 'react-router';
 import { format, addHours } from 'date-fns';
 import clsx from 'clsx';
-import { Star, MapPin, AlertTriangle, FileText, ChevronDown, ChevronUp, X, ShieldCheck, Stethoscope, AlertCircle, ClipboardList } from 'lucide-react';
+import {
+  Star,
+  MapPin,
+  AlertTriangle,
+  FileText,
+  ChevronDown,
+  ChevronUp,
+  X,
+  ShieldCheck,
+  Stethoscope,
+  AlertCircle,
+  ClipboardList,
+  Download,
+} from 'lucide-react';
 import useDiagnosisStore from '../../stores/diagnosisStore';
 import Button from '../../components/ui/Button';
 import { ButtonCore } from '../../components/ui/button-core';
 import { getRecommendedVets } from '../../api/vets';
 import { getDiagnosisReport } from '../../api/diagnosis';
+import {
+  getScreeningSummary,
+  getTopSuspicions,
+  formatAbnormalPct,
+} from '../../lib/diagnosisDisplay';
 
 export default function DiagnoseResult() {
   const { id } = useParams();
-  const navigate = useNavigate();
   const { currentDiagnosis, loading, error, fetchDiagnosis, downloadPDF, clearError } = useDiagnosisStore();
 
   useEffect(() => {
@@ -85,7 +102,22 @@ export default function DiagnoseResult() {
     );
   }
 
-  const { predictions, main_disease, main_confidence, is_normal, image_url, heatmap_url, created_at } = currentDiagnosis;
+  const {
+    predictions,
+    main_disease,
+    main_confidence,
+    is_normal,
+    image_url,
+    heatmap_url,
+    created_at,
+    pet_name,
+  } = currentDiagnosis;
+
+  const screening = useMemo(
+    () => getScreeningSummary({ is_normal, main_disease, main_confidence, predictions }),
+    [is_normal, main_disease, main_confidence, predictions]
+  );
+  const top3 = useMemo(() => getTopSuspicions(predictions, 3), [predictions]);
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
@@ -93,6 +125,9 @@ export default function DiagnoseResult() {
       <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-900 md:text-4xl">
         스크리닝 결과
       </h1>
+      {pet_name && (
+        <p className="mt-1 text-sm text-slate-500">반려동물: {pet_name}</p>
+      )}
       <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-500">
         아래 수치는 AI 참고용입니다. 눈에 이상이 보이면 지체 없이 동물병원에 방문하세요.
       </p>
@@ -105,31 +140,37 @@ export default function DiagnoseResult() {
             본 화면은 질병 진단·치료 결정을 대체하지 않습니다. AI는 학습 데이터와 알고리즘 한계로 오판·누락이 발생할 수
             있으며, 동물병원 방문과 수의사 진단이 최종 기준입니다.
           </p>
-          <p className="text-xs text-amber-900/80">
-            법적 성격: 사전 스크리닝 및 정보 제공 목적(수의사법 등 관련 규정 준수 필요 시 별도 검토).
-          </p>
         </div>
       </div>
 
       <div className="mt-8">
-        {/* 결과 요약 */}
-        <div className={clsx(
-          'mb-6 rounded-xl border p-6 shadow-sm',
-          is_normal ? 'border-emerald-200 bg-emerald-50' : 'border-red-200 bg-red-50'
-        )}>
-          <div className="flex items-center justify-between mb-4">
+        {/* 1) 질환 유무 요약 */}
+        <div
+          className={clsx(
+            'mb-6 rounded-xl border p-6 shadow-sm',
+            screening.status === 'normal'
+              ? 'border-emerald-200 bg-emerald-50'
+              : 'border-red-200 bg-red-50'
+          )}
+        >
+          <div className="mb-4 flex items-start justify-between gap-4">
             <div>
-              <div className="flex items-center gap-3 mb-2">
-                <span className="text-4xl">{is_normal ? '✅' : '⚠️'}</span>
-                <h2 className="text-2xl font-bold text-slate-900">
-                  {is_normal ? '이상 징후 없음' : main_disease}
-                </h2>
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                AI 스크리닝 요약
+              </p>
+              <div className="mt-2 flex flex-wrap items-end gap-3">
+                <span className="text-4xl">{screening.status === 'normal' ? '✅' : '⚠️'}</span>
+                <div>
+                  <h2 className="text-2xl font-bold text-slate-900">{screening.headline}</h2>
+                  <p className="mt-1 text-sm text-slate-600">{screening.detail}</p>
+                </div>
               </div>
-              {!is_normal && (
-                <p className="text-sm text-slate-600">
-                  신뢰도: <span className="font-bold">{main_confidence}%</span>
-                </p>
-              )}
+              <p className="mt-4 text-3xl font-bold tabular-nums text-slate-900">
+                {formatAbnormalPct(screening.percentage)}
+                <span className="ml-2 text-base font-medium text-slate-500">
+                  {screening.status === 'normal' ? '정상 소견 신뢰도' : '이상 가능성(최고)'}
+                </span>
+              </p>
             </div>
             <div className="text-right">
               <p className="text-xs text-slate-400">진단 일시</p>
@@ -139,20 +180,18 @@ export default function DiagnoseResult() {
             </div>
           </div>
 
-          {!is_normal && (
+          {screening.status === 'abnormal' && (
             <div className="rounded-lg border border-red-100 bg-white p-3">
-              <p className="mb-1 text-sm text-slate-700">
-                ⚠️ AI가 검출한 이상 징후입니다. 정확한 진단을 위해 동물병원 방문을 권장합니다.
+              <p className="text-sm text-slate-700">
+                정확한 판단은 수의사 진료가 필요합니다. PDF 보고서에 전체 질환별 수치가 포함됩니다.
               </p>
-              <p className="text-xs text-slate-400">* 본 서비스는 사전 스크리닝 목적이며 의료기기가 아닙니다.</p>
             </div>
           )}
         </div>
 
         <div className="grid gap-6 md:grid-cols-2">
           <div className="space-y-4">
-            {/* 원본 이미지 */}
-            <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
+            <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
               <h3 className="mb-3 font-bold text-slate-900">원본 이미지</h3>
               <img
                 src={image_url?.startsWith('http') ? image_url : `http://localhost/${image_url}`}
@@ -161,34 +200,35 @@ export default function DiagnoseResult() {
               />
             </div>
 
-            {/* 히트맵 이미지 */}
             {heatmap_url && (
-              <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
+              <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
                 <h3 className="mb-1 font-bold text-slate-900">GradCAM 히트맵</h3>
-                <p className="text-xs text-slate-400 mb-3">빨간색 영역일수록 AI가 주목한 부위입니다</p>
+                <p className="mb-3 text-xs text-slate-400">빨간색 영역일수록 AI가 주목한 부위입니다</p>
                 <img src={heatmap_url} alt="히트맵" className="w-full rounded-lg" />
-                <div className="mt-3 flex items-center gap-3 text-xs text-slate-500">
-                  <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-blue-400 inline-block" /> 낮음</span>
-                  <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-yellow-400 inline-block" /> 중간</span>
-                  <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-red-400 inline-block" /> 높음</span>
-                </div>
               </div>
             )}
 
-            {/* 액션 버튼 */}
-            <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-3">
+            <div className="space-y-3 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
               <Button
                 variant="primary"
                 onClick={handleViewReport}
                 loading={reportLoading}
                 className="w-full"
               >
-                <FileText className="mr-1.5 h-4 w-4 inline" />
+                <FileText className="mr-1.5 inline h-4 w-4" />
                 {reportOpen ? '보고서 닫기' : 'AI 보고서 보기'}
               </Button>
-              {reportError && (
-                <p className="text-xs text-red-500 text-center">{reportError}</p>
-              )}
+              {reportError && <p className="text-center text-xs text-red-500">{reportError}</p>}
+              <Button
+                variant="secondary"
+                onClick={handleDownloadPDF}
+                loading={pdfBusy}
+                className="w-full"
+              >
+                <Download className="mr-1.5 inline h-4 w-4" />
+                PDF 저장 (전체 질환·품종 참고)
+              </Button>
+              {pdfError && <p className="text-center text-xs text-red-500">{pdfError}</p>}
               <ButtonCore variant="secondary" asChild className="w-full">
                 <Link to="/diagnosis/history" className="inline-flex w-full justify-center">
                   히스토리 보기
@@ -201,7 +241,6 @@ export default function DiagnoseResult() {
               </ButtonCore>
             </div>
 
-            {/* 인앱 보고서 뷰 */}
             {reportOpen && reportData?.report && (
               <InAppReport
                 data={reportData}
@@ -214,61 +253,67 @@ export default function DiagnoseResult() {
           </div>
 
           <div className="space-y-4">
-            {/* 상세 분석 결과 */}
-            <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
-              <h3 className="mb-4 font-bold text-slate-900">상세 분석 결과</h3>
-              <div className="space-y-3">
-                {Object.entries(predictions).map(([disease, pred]) => (
-                  <div key={disease} className="flex items-center justify-between border-b border-slate-100 py-3 last:border-b-0">
-                    <div className="flex-1">
-                      <p className="font-medium text-slate-900">{disease}</p>
-                      <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-slate-100">
-                        <div
-                          className={clsx(
-                            'h-full rounded-full transition-all',
-                            pred.label === '유' || pred.label === 'abnormal' ? 'bg-red-500' : 'bg-emerald-500'
-                          )}
-                          style={{ width: `${Math.min(100, pred.confidence)}%` }}
-                        />
+            {/* 2) Top 3 의심 질환만 */}
+            <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+              <h3 className="mb-1 font-bold text-slate-900">의심 질환 Top 3</h3>
+              <p className="mb-4 text-xs text-slate-400">
+                이상 가능성(%)이 높은 순입니다. 전체 {Object.keys(predictions || {}).length}개
+                질환 수치는 PDF에서 확인하세요.
+              </p>
+              <div className="space-y-4">
+                {top3.map((item, idx) => (
+                  <div key={item.disease} className="border-b border-slate-100 pb-4 last:border-b-0 last:pb-0">
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-600">
+                          {idx + 1}
+                        </span>
+                        <p className="font-semibold text-slate-900">{item.disease}</p>
                       </div>
+                      <span
+                        className={clsx(
+                          'rounded-full px-2 py-0.5 text-xs font-semibold',
+                          item.isAbnormal ? 'bg-red-50 text-red-700' : 'bg-emerald-50 text-emerald-700'
+                        )}
+                      >
+                        {item.isAbnormal ? '이상 가능' : '정상 쪽'}
+                      </span>
                     </div>
-                    <div className="ml-4 text-right">
-                      <p className={clsx(
-                        'text-lg font-bold',
-                        pred.label === '유' || pred.label === 'abnormal' ? 'text-red-600' : 'text-emerald-600'
-                      )}>
-                        {pred.confidence}%
-                      </p>
-                      <p className="text-xs text-slate-400">
-                        {pred.label === '유' || pred.label === 'abnormal' ? '이상 징후' : '정상'}
-                      </p>
+                    <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+                      <div
+                        className={clsx(
+                          'h-full rounded-full transition-all',
+                          item.isAbnormal ? 'bg-red-500' : 'bg-emerald-400'
+                        )}
+                        style={{ width: `${Math.min(100, item.confidence)}%` }}
+                      />
                     </div>
+                    <p className="mt-1.5 text-right text-sm font-bold tabular-nums text-slate-700">
+                      이상 가능성 {formatAbnormalPct(item.confidence)}
+                    </p>
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* 추천 행동 */}
-            <div className={clsx(
-              'rounded-xl border p-5 shadow-sm',
-              is_normal ? 'bg-emerald-50 border-emerald-200' : 'bg-amber-50 border-amber-200'
-            )}>
+            <div
+              className={clsx(
+                'rounded-xl border p-5 shadow-sm',
+                is_normal ? 'border-emerald-200 bg-emerald-50' : 'border-amber-200 bg-amber-50'
+              )}
+            >
               <h3 className="mb-3 font-bold text-slate-900">
                 {is_normal ? '✅ 추천 행동' : '⚠️ 추천 행동'}
               </h3>
               {is_normal ? (
-                <div className="space-y-3">
-                  <p className="text-sm text-slate-700">현재 이상 징후가 발견되지 않았습니다. 정기적인 검사를 권장합니다.</p>
-                  <ButtonCore variant="secondary" asChild className="w-full">
-                    <Link to="/diagnosis/history" className="inline-flex w-full justify-center text-sm">
-                      📋 정기 검사 히스토리 보기
-                    </Link>
-                  </ButtonCore>
-                </div>
+                <p className="text-sm text-slate-700">
+                  현재 이상 징후가 두드러지지 않습니다. 3~6개월마다 정기 스크리닝을 권장합니다.
+                </p>
               ) : (
                 <div className="space-y-3">
                   <p className="text-sm text-slate-700">
-                    <strong>{main_disease}</strong> 이상 징후가 감지되었습니다. 수의사 소견 요청을 권장합니다.
+                    <strong>{main_disease || top3[0]?.disease}</strong> 등 이상 가능성이 있습니다.
+                    수의사 상담·소견 요청을 권장합니다.
                   </p>
                   <ButtonCore variant="default" asChild className="w-full">
                     <Link to="/vets" className="inline-flex w-full justify-center text-sm">
@@ -279,27 +324,14 @@ export default function DiagnoseResult() {
               )}
             </div>
 
-            {/* GANADI 등록 수의사 직접 추천 — 비정상일 때만 노출 */}
             {!is_normal && <RecommendedVetsCard />}
 
-            {/* 다음 단계 */}
-            <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 shadow-sm">
-              <h3 className="mb-4 font-bold text-slate-900">💡 다음 단계</h3>
-              <ul className="space-y-2 text-sm text-slate-700">
-                {is_normal ? (
-                  <>
-                    <li className="flex gap-2"><span>✅</span><span>현재 이상 징후가 발견되지 않았습니다.</span></li>
-                    <li className="flex gap-2"><span>✅</span><span>정기적인 검사를 권장합니다 (3~6개월마다).</span></li>
-                    <li className="flex gap-2"><span>✅</span><span>증상이 나타나면 즉시 재검사를 받으세요.</span></li>
-                  </>
-                ) : (
-                  <>
-                    <li className="flex gap-2"><span>⚠️</span><span>가까운 동물병원을 방문하여 정밀 검사를 받으세요.</span></li>
-                    <li className="flex gap-2"><span>⚠️</span><span>PDF 보고서를 출력하여 수의사에게 보여주세요.</span></li>
-                    <li className="flex gap-2"><span>⚠️</span><span>증상이 악화되면 즉시 내원하세요.</span></li>
-                  </>
-                )}
-              </ul>
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-5 shadow-sm">
+              <h3 className="mb-2 font-bold text-slate-900">📄 PDF 보고서 안내</h3>
+              <p className="text-sm leading-relaxed text-slate-600">
+                PDF에는 <strong>전체 질환별 확률 표</strong>, 품종·나이별 흔한 안구 질환 참고,
+                AI 종합 소견이 포함됩니다. 병원 방문 시 출력해 수의사에게 보여주세요.
+              </p>
             </div>
           </div>
         </div>
@@ -310,40 +342,37 @@ export default function DiagnoseResult() {
 
 /** Claude AI가 생성한 보고서를 앱 안에서 보여주는 카드 */
 function InAppReport({ data, onClose, onDownloadPDF, pdfBusy, pdfError }) {
-  const { report, pet_name, animal_type, main_disease, main_confidence, is_normal, created_at } = data;
+  const { report, pet_name, animal_type, created_at } = data;
   const urgencyColor = {
     '즉시 방문': 'bg-red-100 text-red-700 border-red-200',
     '빠른 시일 내 방문': 'bg-amber-100 text-amber-700 border-amber-200',
     '정기검진': 'bg-emerald-100 text-emerald-700 border-emerald-200',
+    즉시: 'bg-red-100 text-red-700 border-red-200',
+    '1주 이내': 'bg-amber-100 text-amber-700 border-amber-200',
+    '1개월 이내': 'bg-amber-100 text-amber-700 border-amber-200',
   };
 
   return (
-    <div className="relative rounded-xl border border-blue-200 bg-gradient-to-b from-blue-50 to-white shadow-sm overflow-hidden">
-      {/* PDF 생성 오버레이 */}
+    <div className="relative overflow-hidden rounded-xl border border-blue-200 bg-gradient-to-b from-blue-50 to-white shadow-sm">
       {pdfBusy && (
         <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-white/80 backdrop-blur-sm">
           <div className="h-10 w-10 animate-spin rounded-full border-[3px] border-blue-200 border-t-blue-600" />
           <p className="mt-3 text-sm font-medium text-slate-700">PDF 생성 중...</p>
-          <p className="mt-1 text-xs text-slate-400">최대 20초 정도 소요됩니다</p>
         </div>
       )}
-      {/* 헤더 */}
       <div className="flex items-center justify-between border-b border-blue-100 bg-blue-50 px-5 py-3">
         <div className="flex items-center gap-2">
           <Stethoscope className="h-5 w-5 text-blue-600" />
           <h3 className="font-bold text-slate-900">AI 진단 보고서</h3>
         </div>
-        <button onClick={onClose} className="rounded-full p-1 hover:bg-blue-100">
+        <button type="button" onClick={onClose} className="rounded-full p-1 hover:bg-blue-100">
           <X className="h-4 w-4 text-slate-500" />
         </button>
       </div>
 
       <div className="space-y-4 p-5">
-        {/* 환자 정보 */}
         <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
-          <span className="rounded-md bg-slate-100 px-2 py-0.5 font-medium text-slate-700">
-            {pet_name}
-          </span>
+          <span className="rounded-md bg-slate-100 px-2 py-0.5 font-medium text-slate-700">{pet_name}</span>
           <span className="rounded-md bg-slate-100 px-2 py-0.5">
             {animal_type === 'dog' ? '강아지' : '고양이'}
           </span>
@@ -352,11 +381,12 @@ function InAppReport({ data, onClose, onDownloadPDF, pdfBusy, pdfError }) {
           )}
         </div>
 
-        {/* 방문 권고 */}
-        <div className={clsx(
-          'flex items-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-semibold',
-          urgencyColor[report.visit_urgency] || 'bg-slate-100 text-slate-700 border-slate-200'
-        )}>
+        <div
+          className={clsx(
+            'flex items-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-semibold',
+            urgencyColor[report.visit_urgency] || 'border-slate-200 bg-slate-100 text-slate-700'
+          )}
+        >
           {report.vet_required ? (
             <AlertCircle className="h-4 w-4 flex-shrink-0" />
           ) : (
@@ -365,25 +395,32 @@ function InAppReport({ data, onClose, onDownloadPDF, pdfBusy, pdfError }) {
           병원 방문: {report.visit_urgency}
         </div>
 
-        {/* 종합 소견 */}
         {report.summary && (
           <div>
             <h4 className="mb-1.5 flex items-center gap-1.5 text-sm font-bold text-slate-800">
               <ClipboardList className="h-4 w-4 text-blue-500" />
               종합 소견
             </h4>
-            <p className="rounded-lg bg-white border border-slate-100 p-3 text-sm leading-relaxed text-slate-700">
+            <p className="rounded-lg border border-slate-100 bg-white p-3 text-sm leading-relaxed text-slate-700">
               {report.summary}
             </p>
           </div>
         )}
 
-        {/* 질환별 분석 */}
+        {report.breed_age_notes && (
+          <div>
+            <h4 className="mb-1.5 text-sm font-bold text-slate-800">품종·연령 참고</h4>
+            <p className="whitespace-pre-line rounded-lg border border-slate-100 bg-white p-3 text-sm leading-relaxed text-slate-600">
+              {report.breed_age_notes}
+            </p>
+          </div>
+        )}
+
         {report.disease_analysis && Object.keys(report.disease_analysis).length > 0 && (
           <div>
             <h4 className="mb-2 flex items-center gap-1.5 text-sm font-bold text-slate-800">
               <Stethoscope className="h-4 w-4 text-blue-500" />
-              질환별 상세 분석
+              Top 3 의심 질환 상세
             </h4>
             <div className="space-y-2">
               {Object.entries(report.disease_analysis).map(([disease, analysis]) => (
@@ -393,167 +430,113 @@ function InAppReport({ data, onClose, onDownloadPDF, pdfBusy, pdfError }) {
           </div>
         )}
 
-        {/* 주의사항 */}
         {report.precautions?.length > 0 && (
           <div>
             <h4 className="mb-1.5 flex items-center gap-1.5 text-sm font-bold text-slate-800">
               <AlertTriangle className="h-4 w-4 text-amber-500" />
-              보호자 주의사항
+              주의사항
             </h4>
-            <ul className="space-y-1.5">
-              {report.precautions.map((text, i) => (
-                <li key={i} className="flex gap-2 rounded-lg bg-white border border-slate-100 p-3 text-sm text-slate-700">
-                  <span className="mt-0.5 text-amber-500">•</span>
-                  <span>{text}</span>
-                </li>
+            <ul className="list-inside list-disc space-y-1 text-sm text-slate-700">
+              {report.precautions.map((p, i) => (
+                <li key={i}>{p}</li>
               ))}
             </ul>
           </div>
         )}
 
-        {/* PDF 다운로드 */}
-        <div className="border-t border-slate-100 pt-3">
-          <button
-            onClick={(e) => { e.stopPropagation(); onDownloadPDF?.(); }}
-            disabled={pdfBusy}
-            className="flex w-full items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 transition"
-          >
-            {pdfBusy ? (
-              <>
-                <div className="h-4 w-4 animate-spin rounded-full border-2 border-slate-400 border-t-transparent" />
-                PDF 생성 중...
-              </>
-            ) : (
-              <>
-                <FileText className="h-4 w-4" />
-                PDF로 저장 / 공유
-              </>
-            )}
-          </button>
-          {pdfError && (
-            <p className="mt-1 text-xs text-red-500 text-center">{pdfError}</p>
-          )}
-        </div>
-
-        <p className="text-[11px] text-slate-400 text-center pt-2">
-          본 보고서는 AI(Claude)가 생성한 참고 자료이며, 수의사 진단을 대체하지 않습니다.
-        </p>
+        <button
+          type="button"
+          onClick={onDownloadPDF}
+          disabled={pdfBusy}
+          className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+        >
+          <Download className="h-4 w-4" />
+          {pdfBusy ? 'PDF 생성 중...' : 'PDF로 저장 (전체 질환 표 포함)'}
+        </button>
+        {pdfError && <p className="text-center text-xs text-red-500">{pdfError}</p>}
       </div>
     </div>
   );
 }
 
-/** 질환별 분석 카드 (접힘/펼침) */
 function DiseaseAnalysisCard({ disease, analysis }) {
   const [open, setOpen] = useState(false);
-  const content = typeof analysis === 'string' ? analysis : analysis?.description || analysis?.detail || JSON.stringify(analysis);
-
   return (
-    <div className="rounded-lg border border-slate-100 bg-white overflow-hidden">
+    <div className="rounded-lg border border-slate-100 bg-white">
       <button
-        onClick={() => setOpen(!open)}
-        className="flex w-full items-center justify-between px-3 py-2.5 text-left text-sm font-medium text-slate-800 hover:bg-slate-50"
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center justify-between px-3 py-2.5 text-left text-sm font-semibold text-slate-800"
       >
-        <span>{disease}</span>
-        {open ? <ChevronUp className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />}
+        {disease}
+        {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
       </button>
-      {open && (
-        <div className="border-t border-slate-50 px-3 py-2.5 text-sm leading-relaxed text-slate-600">
-          {content}
-        </div>
-      )}
+      {open && <p className="border-t border-slate-100 px-3 py-2 text-sm text-slate-600">{analysis}</p>}
     </div>
   );
 }
 
-/** AI 결과 페이지 안에서 GANADI 등록 수의사 상위 3명을 보여주는 카드 */
 function RecommendedVetsCard() {
   const [vets, setVets] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loadingVets, setLoadingVets] = useState(true);
+  const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
-    let alive = true;
-    getRecommendedVets({ limit: 3 })
-      .then((data) => alive && setVets(Array.isArray(data) ? data : []))
-      .catch(() => alive && setVets([]))
-      .finally(() => alive && setLoading(false));
-    return () => {
-      alive = false;
-    };
+    getRecommendedVets()
+      .then(setVets)
+      .catch(() => setVets([]))
+      .finally(() => setLoadingVets(false));
   }, []);
 
-  if (loading) {
-    return (
-      <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-        <div className="h-4 w-40 animate-pulse rounded bg-slate-100" />
-        <div className="mt-3 space-y-2">
-          {[0, 1, 2].map((i) => (
-            <div key={i} className="h-14 animate-pulse rounded-lg bg-slate-50" />
-          ))}
-        </div>
-      </div>
-    );
-  }
+  if (loadingVets || vets.length === 0) return null;
 
-  if (vets.length === 0) {
-    // 등록 수의사가 아직 없는 환경(시연 전) — 카드를 숨겨 빈 공간 방지
-    return null;
-  }
+  const shown = expanded ? vets : vets.slice(0, 2);
 
   return (
-    <div className="rounded-xl border border-blue-100 bg-blue-50/50 p-5 shadow-sm">
-      <div className="mb-3 flex items-start justify-between gap-2">
-        <div>
-          <h3 className="text-sm font-bold text-slate-900 sm:text-base">
-            🌟 GANADI 등록 수의사에게 바로 요청
-          </h3>
-          <p className="mt-0.5 text-xs text-slate-500">
-            검증된 수의사가 평균 12\~24시간 내 답변
-          </p>
-        </div>
-        <Link
-          to="/vets?ganadi=1"
-          className="shrink-0 text-xs font-semibold text-blue-600 hover:underline"
-        >
-          전체 보기
-        </Link>
-      </div>
-
-      <ul className="space-y-2">
-        {vets.map((v) => (
-          <li key={v.id}>
+    <div className="rounded-xl border border-blue-200 bg-blue-50/50 p-5 shadow-sm">
+      <h3 className="mb-3 flex items-center gap-2 font-bold text-slate-900">
+        <ShieldCheck className="h-5 w-5 text-blue-600" />
+        GANADI 인증 수의사 추천
+      </h3>
+      <div className="space-y-3">
+        {shown.map((vet) => (
+          <div key={vet.id} className="rounded-lg border border-white bg-white p-3 shadow-sm">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <p className="font-semibold text-slate-900">{vet.hospital_name || vet.name}</p>
+                <p className="text-xs text-slate-500">{vet.specialty || '안과·일반'}</p>
+              </div>
+              {vet.rating != null && (
+                <span className="flex items-center gap-0.5 text-xs font-bold text-amber-600">
+                  <Star className="h-3.5 w-3.5 fill-current" />
+                  {vet.rating.toFixed(1)}
+                </span>
+              )}
+            </div>
+            {vet.address && (
+              <p className="mt-1 flex items-start gap-1 text-xs text-slate-500">
+                <MapPin className="mt-0.5 h-3 w-3 flex-shrink-0" />
+                {vet.address}
+              </p>
+            )}
             <Link
-              to={`/opinion-request/${v.id}`}
-              className="flex items-center gap-3 rounded-lg border border-slate-200 bg-white p-3 transition hover:border-blue-300 hover:bg-blue-50"
+              to={`/opinion-request/${vet.id}`}
+              className="mt-2 inline-block text-xs font-semibold text-blue-600 hover:underline"
             >
-              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-violet-500 text-sm font-bold text-white">
-                {v.name?.slice(0, 1) || '🩺'}
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1.5">
-                  <p className="truncate text-sm font-semibold text-slate-900">
-                    {v.name}
-                  </p>
-                  {typeof v.rating === 'number' && (
-                    <span className="inline-flex items-center gap-0.5 text-[11px] text-amber-500">
-                      <Star className="h-3 w-3 fill-current" />
-                      {v.rating.toFixed(1)}
-                      <span className="text-slate-400">({v.review_count})</span>
-                    </span>
-                  )}
-                </div>
-                <p className="truncate text-xs text-slate-500">
-                  {v.hospital_name}
-                  {v.specialty ? ` · ${v.specialty}` : ''}
-                </p>
-              </div>
-              <span className="shrink-0 rounded-md bg-blue-600 px-2.5 py-1 text-[11px] font-semibold text-white">
-                요청
-              </span>
+              소견 요청 →
             </Link>
-          </li>
+          </div>
         ))}
-      </ul>
+      </div>
+      {vets.length > 2 && (
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="mt-3 text-xs font-medium text-blue-600 hover:underline"
+        >
+          {expanded ? '접기' : `더 보기 (${vets.length - 2}곳)`}
+        </button>
+      )}
     </div>
   );
 }

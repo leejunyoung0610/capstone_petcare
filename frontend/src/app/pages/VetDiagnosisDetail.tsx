@@ -3,6 +3,7 @@ import { Link, useParams, useSearchParams } from "react-router";
 import { ChevronLeft, AlertCircle, CheckCircle, Loader2 } from "lucide-react";
 import { getDiagnosis } from "../../api/diagnosis";
 import { getOpinion } from "../../api/opinions";
+import { getTopSuspicions, getScreeningSummary, formatAbnormalPct } from "../../lib/diagnosisDisplay";
 
 interface Prediction {
   label: string;
@@ -78,6 +79,17 @@ export function VetDiagnosisDetail() {
     );
   }
 
+  const top3 = getTopSuspicions(
+    diagnosis.predictions as Record<string, { label: string; confidence: number }>,
+    3
+  );
+  const screening = getScreeningSummary({
+    is_normal: diagnosis.is_normal,
+    main_disease: diagnosis.main_disease,
+    main_confidence: diagnosis.main_confidence,
+    predictions: diagnosis.predictions as Record<string, { label: string; confidence: number }>,
+  });
+
   return (
     <div className="min-h-screen bg-slate-100">
       <header className="border-b border-slate-200 bg-white px-4 py-4">
@@ -125,13 +137,15 @@ export function VetDiagnosisDetail() {
             )}
             <div>
               <p className={`text-xl font-bold ${diagnosis.is_normal ? "text-green-700" : "text-red-700"}`}>
-                {diagnosis.is_normal ? "이상 징후 없음" : diagnosis.main_disease}
+                {screening.headline}
               </p>
-              {!diagnosis.is_normal && (
-                <p className="text-sm text-slate-600 mt-1">
-                  신뢰도: <strong>{diagnosis.main_confidence}%</strong>
-                </p>
-              )}
+              <p className="text-sm text-slate-600 mt-1">{screening.detail}</p>
+              <p className="text-lg font-bold tabular-nums mt-2">
+                {formatAbnormalPct(screening.percentage)}
+                <span className="text-xs font-normal text-slate-500 ml-2">
+                  {diagnosis.is_normal ? "정상 소견" : "이상 가능성(최고)"}
+                </span>
+              </p>
             </div>
           </div>
         </div>
@@ -175,26 +189,25 @@ export function VetDiagnosisDetail() {
           {/* 질환별 확률 + 증상 */}
           <div className="space-y-4">
             <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-              <h3 className="text-sm font-semibold text-slate-900 mb-4">질환별 확률</h3>
+              <h3 className="text-sm font-semibold text-slate-900 mb-1">의심 질환 Top 3</h3>
+              <p className="text-xs text-slate-400 mb-4">전체 질환 수치는 보호자 PDF 보고서를 참고하세요.</p>
               <div className="space-y-3">
-                {Object.entries(diagnosis.predictions)
-                  .sort((a, b) => b[1].confidence - a[1].confidence)
-                  .map(([disease, pred]) => (
-                    <div key={disease}>
-                      <div className="flex justify-between text-sm mb-1">
-                        <span className={pred.label === "유" ? "font-bold text-red-600" : "text-slate-600"}>
-                          {disease}
-                        </span>
-                        <span className="font-mono font-bold">{pred.confidence}%</span>
-                      </div>
-                      <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                        <div
-                          className={`h-full rounded-full ${pred.label === "유" ? "bg-red-500" : "bg-slate-300"}`}
-                          style={{ width: `${Math.min(100, pred.confidence)}%` }}
-                        />
-                      </div>
+                {top3.map((item, idx) => (
+                  <div key={item.disease}>
+                    <div className="flex justify-between text-sm mb-1">
+                      <span className={item.isAbnormal ? "font-bold text-red-600" : "text-slate-600"}>
+                        {idx + 1}. {item.disease}
+                      </span>
+                      <span className="font-mono font-bold">{formatAbnormalPct(item.confidence)}</span>
                     </div>
-                  ))}
+                    <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full ${item.isAbnormal ? "bg-red-500" : "bg-slate-300"}`}
+                        style={{ width: `${Math.min(100, item.confidence)}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
 
