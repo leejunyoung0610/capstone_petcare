@@ -28,6 +28,8 @@ declare global {
       panTo(latlng: LatLng): void;
       getLevel(): number;
       setLevel(level: number): void;
+      /** 컨테이너 크기 변경·bfcache 복원·탭 전환 후 타일 비율 재계산 */
+      relayout(): void;
     }
 
     interface MarkerImageOptions {

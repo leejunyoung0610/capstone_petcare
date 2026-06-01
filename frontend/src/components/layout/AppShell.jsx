@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Outlet, NavLink, useLocation } from 'react-router';
 import AppHeader from './AppHeader';
 import { Home, PawPrint, MapPin, User, Sparkles } from 'lucide-react';
@@ -20,9 +21,21 @@ function useIsDiagnoseActive() {
 }
 
 export default function AppShell() {
+  const { pathname } = useLocation();
+
+  // 카카오맵·모달 등에서 남은 body overflow / 포커스( iOS 줌 )가 다른 페이지로 넘어가지 않게
+  useEffect(() => {
+    document.body.style.overflow = '';
+    document.documentElement.style.overflow = '';
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+    window.scrollTo(0, 0);
+  }, [pathname]);
+
   return (
     // pb-24 = 64px 탭바 + floating 여유 + safe-area 보정
-    <div className="min-h-screen bg-slate-50 pb-24 lg:pb-0">
+    <div className="min-h-screen overflow-x-hidden bg-slate-50 pb-24 lg:pb-0">
       <AppHeader />
       <Outlet />
 

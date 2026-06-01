@@ -16,7 +16,7 @@ import {
   X,
 } from "lucide-react";
 import { matchHospitalsWithGanadi, listRegisteredVets } from "../../api/vets";
-import { loadKakaoMapsSdk } from "../../lib/kakaoMap";
+import { loadKakaoMapsSdk, relayoutKakaoMap, destroyKakaoMapInstance } from "../../lib/kakaoMap";
 import { SHOW_OPINION_PAYMENT_UI } from "../../config/features";
 
 /**
@@ -91,6 +91,7 @@ export function VetSearch() {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [mapReady, setMapReady] = useState(false);
 
   const mapDivRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<kakao.maps.Map | null>(null);
@@ -236,6 +237,7 @@ export function VetSearch() {
         if (mapRef.current) {
           mapRef.current.setLevel(5);
           mapRef.current.setCenter(new window.kakao.maps.LatLng(newCenter.lat, newCenter.lng));
+          relayoutKakaoMap(mapRef.current);
         }
 
         console.log(
@@ -263,6 +265,34 @@ export function VetSearch() {
 
     let cancelled = false;
     setLoading(true);
+    setMapReady(false);
+
+    const ensureMap = (center: { lat: number; lng: number }) => {
+      const container = mapDivRef.current;
+      if (!container || !window.kakao?.maps) return;
+
+      const centerLatLng = new window.kakao.maps.LatLng(center.lat, center.lng);
+
+      // StrictMode·뒤로가기(bfcache) 후에는 컨테이너 DOM 이 바뀌므로 항상 새 Map 생성
+      if (mapRef.current) {
+        destroyKakaoMapInstance(
+          mapRef,
+          mapDivRef,
+          markersRef.current,
+          infoWindowRef.current
+        );
+        infoWindowRef.current = null;
+        markersRef.current = [];
+      }
+
+      mapRef.current = new window.kakao.maps.Map(container, {
+        center: centerLatLng,
+        level: 4,
+      });
+      setMapReady(true);
+      requestAnimationFrame(() => relayoutKakaoMap(mapRef.current));
+      window.setTimeout(() => relayoutKakaoMap(mapRef.current), 200);
+    };
 
     (async () => {
       try {
@@ -272,14 +302,7 @@ export function VetSearch() {
         const center = await getCurrentPosition();
         if (cancelled) return;
 
-        if (mapDivRef.current && !mapRef.current) {
-          mapRef.current = new window.kakao.maps.Map(mapDivRef.current, {
-            center: new window.kakao.maps.LatLng(center.lat, center.lng),
-            level: 4,
-          });
-        } else if (mapRef.current) {
-          mapRef.current.setCenter(new window.kakao.maps.LatLng(center.lat, center.lng));
-        }
+        ensureMap(center);
         await searchNearbyHospitals(center);
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
@@ -304,9 +327,55 @@ export function VetSearch() {
 
     return () => {
       cancelled = true;
+      setMapReady(false);
+      destroyKakaoMapInstance(
+        mapRef,
+        mapDivRef,
+        markersRef.current,
+        infoWindowRef.current
+      );
+      infoWindowRef.current = null;
+      markersRef.current = [];
+      if (document.activeElement instanceof HTMLElement) {
+        document.activeElement.blur();
+      }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // ---------- 지도 컨테이너 크기·bfcache·탭 복귀 시 relayout ----------
+  useEffect(() => {
+    if (!mapReady) return;
+
+    const container = mapDivRef.current;
+    if (!container) return;
+
+    const scheduleRelayout = () => {
+      requestAnimationFrame(() => relayoutKakaoMap(mapRef.current));
+    };
+
+    const ro = new ResizeObserver(scheduleRelayout);
+    ro.observe(container);
+
+    const onPageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) scheduleRelayout();
+    };
+    const onVisible = () => {
+      if (document.visibilityState === "visible") scheduleRelayout();
+    };
+
+    window.addEventListener("pageshow", onPageShow);
+    window.addEventListener("resize", scheduleRelayout);
+    document.addEventListener("visibilitychange", onVisible);
+    scheduleRelayout();
+
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("pageshow", onPageShow);
+      window.removeEventListener("resize", scheduleRelayout);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [mapReady]);
 
   // ---------- GANADI 인증 병원 전체 목록 (토글 ON 시 1회 로드) ----------
   useEffect(() => {
@@ -370,7 +439,7 @@ export function VetSearch() {
   // ---------- 지도 마커 갱신 ----------
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !window.kakao?.maps) return;
+    if (!mapReady || !map || !window.kakao?.maps) return;
 
     // 이전 마커 제거
     markersRef.current.forEach((m) => m.setMap(null));
@@ -409,7 +478,8 @@ export function VetSearch() {
     });
 
     markersRef.current = newMarkers;
-  }, [visibleHospitals]);
+    relayoutKakaoMap(map);
+  }, [visibleHospitals, mapReady]);
 
   // ---------- 새로고침 ----------
   const refresh = useCallback(async () => {
@@ -426,10 +496,11 @@ export function VetSearch() {
     if (!map || !window.kakao?.maps) return;
     map.setLevel(3);
     map.panTo(new window.kakao.maps.LatLng(h.y, h.x));
+    relayoutKakaoMap(map);
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen overflow-x-hidden bg-slate-50">
 
       <div className="max-w-7xl mx-auto px-4 py-5 sm:py-10">
         {/* 헤더 — 모바일에선 한 줄, 다시 검색은 아이콘 버튼 */}
@@ -466,7 +537,7 @@ export function VetSearch() {
               <input
                 type="text"
                 placeholder="지역 검색 (예: 홍대, 강남역)"
-                className="w-full rounded-lg border border-slate-300 py-2.5 pl-9 pr-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full rounded-lg border border-slate-300 py-2.5 pl-9 pr-3 text-base focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={(e) => {
@@ -560,7 +631,7 @@ export function VetSearch() {
           {/* 지도 — 모바일은 컴팩트, sm 이상은 더 큼 */}
           <div className="lg:sticky lg:top-24 lg:h-fit">
             <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-              <div ref={mapDivRef} className="h-[260px] w-full bg-slate-100 sm:h-[400px] lg:h-[520px]" />
+              <div ref={mapDivRef} className="relative h-[260px] w-full min-w-0 bg-slate-100 sm:h-[400px] lg:h-[520px]" />
             </div>
             <p className="mt-1.5 text-[11px] sm:text-xs text-slate-400">
               마커를 누르면 병원명이 보이고, 카드를 누르면 지도가 그 위치로 이동합니다.
@@ -621,6 +692,15 @@ function HospitalCard({
 }) {
   const [showSheet, setShowSheet] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (!showSheet) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [showSheet]);
 
   const address = hospital.road_address || hospital.address || "";
   const kakaoUrl = `https://map.kakao.com/link/to/${encodeURIComponent(hospital.place_name)},${hospital.y},${hospital.x}`;

@@ -71,3 +71,28 @@ export function loadKakaoMapsSdk(appKey: string): Promise<typeof kakao> {
 
   return loadPromise;
 }
+
+/** 지도 컨테이너 크기가 바뀐 뒤 타일·비율을 다시 맞춘다 (뒤로가기·bfcache·회전 등). */
+export function relayoutKakaoMap(map: kakao.maps.Map | null | undefined): void {
+  if (!map) return;
+  try {
+    map.relayout();
+  } catch {
+    /* SDK 미준비 등 — 무시 */
+  }
+}
+
+/** 마커·인포윈도우 정리 후 컨테이너를 비워 다음 mount 에서 새 Map 을 만들 수 있게 한다. */
+export function destroyKakaoMapInstance(
+  mapRef: { current: kakao.maps.Map | null },
+  containerRef: { current: HTMLElement | null },
+  markers: kakao.maps.Marker[],
+  infoWindow: kakao.maps.InfoWindow | null
+): void {
+  markers.forEach((m) => m.setMap(null));
+  infoWindow?.close();
+  mapRef.current = null;
+  if (containerRef.current) {
+    containerRef.current.replaceChildren();
+  }
+}
