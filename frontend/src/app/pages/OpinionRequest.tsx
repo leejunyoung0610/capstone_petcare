@@ -252,7 +252,7 @@ export function OpinionRequest() {
                   </div>
                   <div className="flex items-center gap-2 p-2 bg-white border border-blue-100 rounded-lg text-xs text-green-700">
                     <CheckCircle className="w-3.5 h-3.5 flex-shrink-0" />
-                    원본 이미지 + 히트맵이 자동으로 첨부됩니다
+                    원본 이미지가 자동으로 첨부됩니다
                   </div>
                 </div>
               );

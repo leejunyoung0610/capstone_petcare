@@ -444,16 +444,33 @@ function InAppReport({ data, onClose, onDownloadPDF, pdfBusy, pdfError }) {
           </div>
         )}
 
-        <button
-          type="button"
-          onClick={onDownloadPDF}
-          disabled={pdfBusy}
-          className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
-        >
-          <Download className="h-4 w-4" />
-          {pdfBusy ? 'PDF 생성 중...' : 'PDF로 저장 (전체 질환 표 포함)'}
-        </button>
-        {pdfError && <p className="text-center text-xs text-red-500">{pdfError}</p>}
+        {/* PDF 다운로드 */}
+        <div className="border-t border-slate-100 pt-3">
+          <button
+            onClick={(e) => { e.stopPropagation(); onDownloadPDF?.(); }}
+            disabled={pdfBusy}
+            className="flex w-full items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 transition"
+          >
+            {pdfBusy ? (
+              <>
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-slate-400 border-t-transparent" />
+                PDF 생성 중...
+              </>
+            ) : (
+              <>
+                <FileText className="h-4 w-4" />
+                PDF로 저장
+              </>
+            )}
+          </button>
+          {pdfError && (
+            <p className="mt-1 text-xs text-red-500 text-center">{pdfError}</p>
+          )}
+        </div>
+
+        <p className="text-[11px] text-slate-400 text-center pt-2">
+          본 보고서는 AI(Claude)가 생성한 참고 자료이며, 수의사 진단을 대체하지 않습니다.
+        </p>
       </div>
     </div>
   );

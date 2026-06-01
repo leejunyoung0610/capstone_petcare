@@ -29,6 +29,7 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
+  Legend,
   ResponsiveContainer,
 } from "recharts";
 import useAuthStore from "../../stores/authStore";
@@ -579,24 +580,35 @@ export function VetDashboard() {
                 )}
                 <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
                   <h3 className="mb-4 text-sm font-semibold text-slate-900">질환별 소견 분포</h3>
-                  <div className="h-[180px] w-full">
+                  <div className="h-[260px] w-full">
                     {summary.disease_breakdown.length > 0 ? (
                       <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
                           <Pie
                             data={summary.disease_breakdown.map((d) => ({ name: d.disease, value: d.count }))}
                             cx="50%"
-                            cy="50%"
+                            cy="45%"
                             outerRadius={70}
                             dataKey="value"
-                            label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                            labelLine={false}
                           >
                             {summary.disease_breakdown.map((_, i) => (
                               <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
                             ))}
                           </Pie>
-                          <Tooltip />
+                          <Tooltip formatter={(value: number) => [`${value}건`, "소견 수"]} />
+                          <Legend
+                            iconType="circle"
+                            iconSize={8}
+                            formatter={(value, entry: any) => {
+                              const total = summary.disease_breakdown.reduce((s, d) => s + d.count, 0);
+                              const pct = total > 0 ? Math.round((entry.payload.value / total) * 100) : 0;
+                              return (
+                                <span className="text-xs text-slate-600">
+                                  {value} <span className="font-semibold">{pct}%</span>
+                                </span>
+                              );
+                            }}
+                          />
                         </PieChart>
                       </ResponsiveContainer>
                     ) : (

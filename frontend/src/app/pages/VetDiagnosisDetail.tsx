@@ -24,8 +24,10 @@ interface Diagnosis {
 interface OpinionRequest {
   symptom_description: string;
   image_urls?: string[] | null;
-  pet: { name: string; species: string; age: number };
-  user: { nickname: string };
+  pet_name?: string | null;
+  pet_age?: number | null;
+  pet_species?: string | null;
+  owner_name?: string | null;
 }
 
 export function VetDiagnosisDetail() {
@@ -114,12 +116,18 @@ export function VetDiagnosisDetail() {
               <div>
                 <p className="text-slate-500 mb-1">반려동물</p>
                 <p className="font-semibold">
-                  {opinionRequest.pet?.name} ({opinionRequest.pet?.species === "DOG" ? "강아지" : "고양이"}, {opinionRequest.pet?.age}세)
+                  {opinionRequest.pet_name}
+                  {opinionRequest.pet_species || opinionRequest.pet_age != null ? (
+                    <span className="font-normal text-slate-600">
+                      {" "}({opinionRequest.pet_species === "dog" ? "강아지" : opinionRequest.pet_species === "cat" ? "고양이" : opinionRequest.pet_species}
+                      {opinionRequest.pet_age != null ? `, ${opinionRequest.pet_age}세` : ""})
+                    </span>
+                  ) : null}
                 </p>
               </div>
               <div>
                 <p className="text-slate-500 mb-1">보호자</p>
-                <p className="font-semibold">{opinionRequest.user?.nickname}</p>
+                <p className="font-semibold">{opinionRequest.owner_name ?? "—"}</p>
               </div>
             </div>
           </div>

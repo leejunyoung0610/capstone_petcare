@@ -386,7 +386,7 @@ export default function DiagnoseNew() {
               </div>
               <div>
                 <p className="mb-0.5 text-xs font-bold text-emerald-600 sm:text-sm">
-                  🐱 고양이 6종
+                  🐱 고양이 5종
                 </p>
                 <p className="text-[11px] leading-relaxed text-slate-600 sm:text-xs">
                   결막염, 각막궤양, 각막부골편, 유루증 외

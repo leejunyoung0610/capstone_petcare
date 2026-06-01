@@ -184,7 +184,7 @@ export function Home() {
                 icon: <Sparkles className="w-7 h-7 text-blue-600" />,
                 bg: "bg-blue-50",
                 title: "AI 멀티태스크 분석",
-                desc: "강아지 10개·고양이 6개 라벨을 동시 검사합니다. GradCAM으로 병변 위치를 시각화합니다.",
+                desc: "강아지 10개·고양이 5개 라벨을 동시 검사합니다.",
               },
               {
                 icon: <Search className="w-7 h-7 text-green-600" />,
@@ -220,7 +220,7 @@ export function Home() {
             {[
               { step: "1", title: "사진 촬영", desc: "반려동물 눈을 스마트폰으로 촬영" },
               { step: "2", title: "AI 분석", desc: "15종 안구 질환 동시 스크리닝" },
-              { step: "3", title: "결과 확인", desc: "GradCAM 히트맵으로 병변 확인" },
+              { step: "3", title: "결과 확인", desc: "AI 분석 결과 및 PDF 소견서로 병변 확인" },
               { step: "4", title: "수의사 소견", desc: "필요시 전문가 원격 소견 요청" },
             ].map((item) => (
               <div key={item.step} className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">

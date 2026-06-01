@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { rateOpinion } from "../../api/opinions";
-import { Header } from "../components/Header";
 import { Star } from "lucide-react";
 
 export function ReviewWrite() {
@@ -33,8 +32,6 @@ export function ReviewWrite() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <Header />
-
       <div className="max-w-xl mx-auto px-4 py-12">
         <h1 className="text-xl font-bold text-slate-900 mb-1">리뷰 작성</h1>
         <p className="text-sm text-slate-500 mb-8">수의사 소견에 대한 후기를 남겨주세요.</p>
