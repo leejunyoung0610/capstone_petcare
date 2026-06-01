@@ -16,7 +16,7 @@ interface Diagnosis {
   main_confidence: number | null;
   is_normal: boolean;
   predictions: Record<string, Prediction>;
-  input_image_url: string;
+  image_url: string;
   heatmap_url: string | null;
   created_at: string;
 }
@@ -155,7 +155,7 @@ export function VetDiagnosisDetail() {
           <div className="space-y-4">
             <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
               <h3 className="text-sm font-semibold text-slate-900 mb-3">원본 이미지</h3>
-              <img src={diagnosis.input_image_url} alt="원본 이미지" className="w-full rounded-lg object-cover" />
+              <img src={diagnosis.image_url} alt="원본 이미지" className="w-full rounded-lg object-cover" />
             </div>
 
             {diagnosis.heatmap_url && (
