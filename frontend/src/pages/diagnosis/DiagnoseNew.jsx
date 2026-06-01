@@ -17,6 +17,8 @@ export default function DiagnoseNew() {
   const { analyzePet, loading, error, clearError } = useDiagnosisStore();
 
   const [selectedPetId, setSelectedPetId] = useState(preselectedPetId || '');
+  const [captureDevice, setCaptureDevice] = useState('스마트폰');
+  const [trainingConsent, setTrainingConsent] = useState(false);
   const [image, setImage] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [crop, setCrop] = useState({ unit: '%', width: 90, aspect: 1 });
@@ -79,8 +81,13 @@ export default function DiagnoseNew() {
   const handleAnalyze = async () => {
     if (!selectedPetId) { alert('반려동물을 선택해주세요.'); return; }
     if (!image) { alert('이미지를 업로드해주세요.'); return; }
+    if (!captureDevice) { alert('촬영 장비를 선택해주세요.'); return; }
     try {
-      const result = await analyzePet(parseInt(selectedPetId), image);
+      const result = await analyzePet(parseInt(selectedPetId), image, {
+        captureDevice,
+        trainingConsent,
+        consentVersion: 'v1',
+      });
       navigate(`/diagnosis/${result.id}`);
     } catch (err) { }
   };
@@ -278,6 +285,53 @@ export default function DiagnoseNew() {
               <Camera className="h-4 w-4" />
               카메라로 촬영
             </button>
+          </section>
+
+          {/* 촬영 장비 */}
+          <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+            <h3 className="mb-3 text-sm font-bold text-slate-900 sm:text-base">촬영 장비</h3>
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+              {[
+                { value: '스마트폰', label: '스마트폰' },
+                { value: '검안경', label: '검안경' },
+                { value: '일반카메라', label: '일반카메라' },
+              ].map(({ value, label }) => (
+                <label
+                  key={value}
+                  className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm ${
+                    captureDevice === value
+                      ? 'border-blue-500 bg-blue-50 text-blue-800'
+                      : 'border-slate-200 text-slate-700'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="capture_device"
+                    value={value}
+                    checked={captureDevice === value}
+                    onChange={() => setCaptureDevice(value)}
+                    className="accent-blue-600"
+                  />
+                  {label}
+                </label>
+              ))}
+            </div>
+          </section>
+
+          {/* 학습 활용 동의 (opt-in) */}
+          <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+            <label className="flex cursor-pointer items-start gap-2.5">
+              <input
+                type="checkbox"
+                checked={trainingConsent}
+                onChange={(e) => setTrainingConsent(e.target.checked)}
+                className="mt-0.5 accent-blue-600"
+              />
+              <span className="text-xs leading-relaxed text-slate-600 sm:text-sm">
+                촬영하신 안구 사진을 AI 모델 학습·품질 개선에 활용하는 것에 동의합니다.
+                동의하지 않아도 AI 스크리닝 결과는 동일하게 제공됩니다.
+              </span>
+            </label>
           </section>
 
           <Button

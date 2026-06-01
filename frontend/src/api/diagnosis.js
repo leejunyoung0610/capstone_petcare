@@ -5,9 +5,18 @@ import apiClient from './client';
  */
 
 // AI 진단 요청 (이미지 업로드)
-export const analyzePetEye = async (petId, imageFile) => {
+export const analyzePetEye = async (petId, imageFile, options = {}) => {
+  const {
+    trainingConsent = false,
+    captureDevice = '스마트폰',
+    consentVersion = 'v1',
+  } = options;
+
   const formData = new FormData();
   formData.append('image', imageFile);
+  formData.append('training_consent', trainingConsent ? 'true' : 'false');
+  formData.append('capture_device', captureDevice);
+  formData.append('consent_version', consentVersion);
   
   const response = await apiClient.post(`/diagnosis/analyze?pet_id=${petId}`, formData, {
     headers: {
