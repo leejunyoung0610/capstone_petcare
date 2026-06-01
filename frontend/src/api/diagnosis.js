@@ -1,4 +1,9 @@
 import apiClient from './client';
+import {
+  needsDirectPdfNavigation,
+  openPdfViaDirectUrl,
+  savePdfBlob,
+} from '../lib/pdfDownload';
 
 /**
  * 진단 API
@@ -60,39 +65,19 @@ export const getDiagnosisReport = async (diagnosisId) => {
 
 // PDF 다운로드 (Claude 리포트 + ReportLab PDF — 서버 처리 시간이 길 수 있음)
 export const downloadDiagnosisPDF = async (diagnosisId) => {
-  try {
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  // iOS Safari: axios 완료 후 blob 열기는 사용자 제스처가 만료되어 무응답처럼 보임
+  if (needsDirectPdfNavigation()) {
+    openPdfViaDirectUrl(`/diagnosis/${diagnosisId}/pdf`);
+    return;
+  }
 
+  try {
     const response = await apiClient.get(`/diagnosis/${diagnosisId}/pdf`, {
       responseType: 'blob',
       timeout: 120000,
     });
 
-    const blob = response.data;
-    if (!(blob instanceof Blob) || blob.size < 100) {
-      throw new Error('PDF 응답이 올바르지 않습니다.');
-    }
-
-    const pdfBlob = new Blob([blob], { type: 'application/pdf' });
-    const url = window.URL.createObjectURL(pdfBlob);
-
-    if (isMobile) {
-      const link = document.createElement('a');
-      link.href = url;
-      link.target = '_blank';
-      link.rel = 'noopener';
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-    } else {
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `진단보고서_${diagnosisId}.pdf`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-    }
-    setTimeout(() => window.URL.revokeObjectURL(url), 30000);
+    savePdfBlob(response.data, `진단보고서_${diagnosisId}.pdf`);
   } catch (error) {
     const data = error.response?.data;
     if (data instanceof Blob) {

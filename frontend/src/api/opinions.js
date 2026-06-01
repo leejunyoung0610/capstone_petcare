@@ -1,4 +1,9 @@
 import apiClient from './client';
+import {
+  needsDirectPdfNavigation,
+  openPdfViaDirectUrl,
+  savePdfBlob,
+} from '../lib/pdfDownload';
 
 // 소견 요청 전송
 export const createOpinion = async (data) => {
@@ -46,19 +51,17 @@ export const updateVetOpinion = async (opinionId, data) => {
 
 // 소견서 PDF 다운로드
 export const downloadOpinionPDF = async (opinionId) => {
+  if (needsDirectPdfNavigation()) {
+    openPdfViaDirectUrl(`/vet-opinions/${opinionId}/pdf`);
+    return;
+  }
+
   const response = await apiClient.get(`/vet-opinions/${opinionId}/pdf`, {
     responseType: 'blob',
     timeout: 60000,
   });
 
-  const url = window.URL.createObjectURL(new Blob([response.data]));
-  const link = document.createElement('a');
-  link.href = url;
-  link.setAttribute('download', `소견서_${opinionId}.pdf`);
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  window.URL.revokeObjectURL(url);
+  savePdfBlob(response.data, `소견서_${opinionId}.pdf`);
 };
 
 // 리뷰 작성 (평점·리뷰)
