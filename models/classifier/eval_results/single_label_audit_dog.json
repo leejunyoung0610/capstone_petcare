@@ -1,0 +1,87 @@
+{
+  "animal_type": "dog",
+  "cap_mode": "disease_balanced",
+  "raw": {
+    "total": 176803,
+    "multi_active_label": 0,
+    "no_active_label": 0,
+    "abnormal_on_multiple_heads": 0,
+    "unique_uuids": 176803,
+    "uuid_appears_multiple_paths": 0,
+    "uuid_cross_disease_conflicts": 0,
+    "uuid_conflict_examples": [],
+    "by_disease": {
+      "결막염": 19195,
+      "궤양성각막질환": 20621,
+      "백내장": 27520,
+      "색소침착성각막염": 14110,
+      "비궤양성각막질환": 14414,
+      "안검종양": 9610,
+      "안검염": 13759,
+      "안검내반증": 19174,
+      "핵경화": 19199,
+      "유루증": 19201
+    },
+    "normal_count": 75676,
+    "abnormal_count": 101127
+  },
+  "capped": {
+    "total": 99410,
+    "multi_active_label": 0,
+    "no_active_label": 0,
+    "abnormal_on_multiple_heads": 0,
+    "unique_uuids": 99410,
+    "uuid_appears_multiple_paths": 0,
+    "uuid_cross_disease_conflicts": 0,
+    "uuid_conflict_examples": [],
+    "by_disease": {
+      "핵경화": 10000,
+      "안검염": 10000,
+      "궤양성각막질환": 10000,
+      "유루증": 10000,
+      "안검내반증": 10000,
+      "결막염": 10000,
+      "백내장": 10000,
+      "색소침착성각막염": 10000,
+      "비궤양성각막질환": 9800,
+      "안검종양": 9610
+    },
+    "normal_count": 49600,
+    "abnormal_count": 49810
+  },
+  "val": {
+    "total": 19921,
+    "multi_active_label": 0,
+    "no_active_label": 0,
+    "abnormal_on_multiple_heads": 0,
+    "unique_uuids": 19921,
+    "uuid_appears_multiple_paths": 0,
+    "uuid_cross_disease_conflicts": 0,
+    "uuid_conflict_examples": [],
+    "by_disease": {
+      "궤양성각막질환": 1989,
+      "안검염": 2019,
+      "안검종양": 1887,
+      "색소침착성각막염": 1971,
+      "핵경화": 2058,
+      "안검내반증": 2024,
+      "비궤양성각막질환": 1966,
+      "유루증": 2021,
+      "백내장": 1998,
+      "결막염": 1988
+    },
+    "normal_count": 9969,
+    "abnormal_count": 9952
+  },
+  "split_meta": {
+    "method": "group_global",
+    "seed": 42,
+    "val_ratio": 0.2,
+    "use_group_split": true,
+    "group_split_mode": "global",
+    "has_sklearn": true,
+    "train_size": 79489,
+    "val_size": 19921
+  },
+  "conclusion": "단일 라벨 가정 성공 — 각 이미지는 정확히 1개 질환 헤드만 활성(label>=0), 비정상은 해당 질환 1개만 양성. softmax 10-class 감별 학습 가능."
+}
