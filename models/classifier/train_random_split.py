@@ -8,10 +8,17 @@ VL 대신 eye_data/개 + TL2 만 사용해 stratified random split (Val 20%).
   ANIMAL_TYPE=dog SPLIT_SEED=42 python models/classifier/train_random_split.py
   ANIMAL_TYPE=cat SPLIT_SEED=42 python models/classifier/train_random_split.py
 
+  # disease-balanced cap 재학습 (기존 _best_random_split.pth 보존)
+  CAP_MODE=disease_balanced DISEASE_BALANCED_LIMIT=5000 PRESERVE_SMARTPHONE=true \\
+    ANIMAL_TYPE=dog SPLIT_SEED=42 python models/classifier/train_random_split.py
+
 환경변수:
   SPLIT_SEED=42
   VAL_RATIO=0.2
   USE_GROUP_SPLIT=1  — crop_D* 그룹 단위 분할
+  CAP_MODE=stratum|disease_balanced
+  DISEASE_BALANCED_LIMIT=5000
+  PRESERVE_SMARTPHONE=true
 """
 
 import sys
@@ -41,6 +48,11 @@ from models.classifier.dataset_random_split import (
     SMARTPHONE,
     RandomSplitEyeDataset,
     create_random_split_dataloaders,
+    resolve_cap_mode,
+)
+from models.classifier.eval_multitask_topk import (
+    _active_disease_and_label,
+    _rank_diseases_by_abnormal_prob,
 )
 from models.classifier.losses import build_per_disease_losses
 from models.classifier.model import create_model, count_parameters
@@ -161,6 +173,45 @@ def _validate_epoch_ema(
     )
 
 
+@torch.no_grad()
+def _monitor_cataract_top3(
+    model: nn.Module,
+    val_dataset: RandomSplitEyeDataset,
+    val_loader: DataLoader,
+    diseases: List[str],
+    device: str,
+    *,
+    target_disease: str = "백내장",
+    ema: Optional[ModelEmaV2] = None,
+) -> float:
+    """Val 비정상 중 target_disease 샘플의 Top-3 질환 hit rate (붕괴 모니터링)."""
+    infer_model = eval_model(model, ema)
+    infer_model.eval()
+    hits = 0
+    total = 0
+    local_idx = 0
+
+    for images, labels in val_loader:
+        images = images.to(device)
+        outputs = infer_model(images)
+        bs = images.size(0)
+        for i in range(bs):
+            if local_idx >= len(val_dataset):
+                break
+            gt_disease, gt_label = _active_disease_and_label(labels, i, diseases)
+            if gt_disease != target_disease or gt_label <= 0:
+                local_idx += 1
+                continue
+            ranked = _rank_diseases_by_abnormal_prob(outputs, i, diseases)
+            ranked_names = [d for d, _ in ranked]
+            if target_disease in ranked_names[:3]:
+                hits += 1
+            total += 1
+            local_idx += 1
+
+    return hits / total if total else 0.0
+
+
 def _run_phase_ema(
     *,
     phase: int,
@@ -182,6 +233,7 @@ def _run_phase_ema(
     patience_counter: int,
     best_path: str,
     ema: Optional[ModelEmaV2] = None,
+    val_ds: Optional[RandomSplitEyeDataset] = None,
 ) -> Tuple[float, int, str, int]:
     print(f"\n{'=' * 60}")
     print(
@@ -232,6 +284,13 @@ def _run_phase_ema(
 
         _print_disease_metrics("[Val]", val_metrics, diseases)
 
+        cataract_top3 = float("nan")
+        if val_ds is not None and "백내장" in diseases:
+            cataract_top3 = _monitor_cataract_top3(
+                model, val_ds, val_loader, diseases, device, ema=ema,
+            )
+            print(f"  [Monitor] 백내장 Top-3 hit: {cataract_top3 * 100:.2f}%")
+
         history["epochs"].append(
             {
                 "epoch": global_epoch,
@@ -241,6 +300,7 @@ def _run_phase_ema(
                 "train_acc_mean": train_acc,
                 "val_acc_mean": val_acc,
                 "acc_gap": acc_gap,
+                "cataract_top3_hit": cataract_top3,
                 "lr": optimizer.param_groups[0]["lr"],
             }
         )
@@ -279,6 +339,7 @@ def _run_phase_ema(
 
 
 class RandomSplitConfig(BaseTrainConfig):
+    ANIMAL_TYPE = os.environ.get("ANIMAL_TYPE", "dog").strip().lower()
     SPLIT_SEED = int(os.environ.get("SPLIT_SEED", "42"))
     VAL_RATIO = float(os.environ.get("VAL_RATIO", "0.2"))
     USE_GROUP_SPLIT = os.environ.get("USE_GROUP_SPLIT", "1").strip().lower() in (
@@ -286,19 +347,28 @@ class RandomSplitConfig(BaseTrainConfig):
         "true",
         "yes",
     )
+    CAP_MODE = resolve_cap_mode()
+
+    @staticmethod
+    def _checkpoint_suffix() -> str:
+        if resolve_cap_mode() == "disease_balanced":
+            return "balanced_cap"
+        return "random_split"
 
     @staticmethod
     def best_checkpoint(animal: str) -> str:
+        suffix = RandomSplitConfig._checkpoint_suffix()
         return os.path.join(
             RandomSplitConfig.OUTPUT_DIR,
-            f"{animal}_best_random_split.pth",
+            f"{animal}_best_{suffix}.pth",
         )
 
     @staticmethod
     def final_checkpoint(animal: str) -> str:
+        suffix = RandomSplitConfig._checkpoint_suffix()
         return os.path.join(
             RandomSplitConfig.OUTPUT_DIR,
-            f"{animal}_final_random_split.pth",
+            f"{animal}_final_{suffix}.pth",
         )
 
 
@@ -521,6 +591,7 @@ def train():
     print("=" * 64)
     print(f"  VL 미사용 | SPLIT_SEED={config.SPLIT_SEED} | VAL_RATIO={config.VAL_RATIO}")
     print(f"  USE_GROUP_SPLIT={'ON' if config.USE_GROUP_SPLIT else 'OFF'}")
+    print(f"  CAP_MODE={config.CAP_MODE}")
 
     device = get_device()
     batch_size = resolve_batch_size(config.BATCH_SIZE)
@@ -618,6 +689,7 @@ def train():
             patience_counter=patience_counter,
             best_path=best_path,
             ema=ema,
+            val_ds=val_ds,
         )
         if patience_counter < config.PATIENCE:
             patience_counter = 0
@@ -645,6 +717,7 @@ def train():
             patience_counter=patience_counter,
             best_path=best_path,
             ema=ema,
+            val_ds=val_ds,
         )
 
     infer = eval_model(model, ema)

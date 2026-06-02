@@ -159,7 +159,7 @@ class MultiTaskEyeDiseaseModel(nn.Module):
         print("✓ 백본 unfreeze 완료 (전체 학습)")
 
 
-def create_model(animal_type: str = "dog", pretrained: bool = True) -> MultiTaskEyeDiseaseModel:
+def create_model(animal_type: str = "dog", pretrained: bool = True, **kwargs) -> MultiTaskEyeDiseaseModel:
     """
     모델 생성 헬퍼 함수
     

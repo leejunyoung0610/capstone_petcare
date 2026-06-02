@@ -22,11 +22,12 @@ import os
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from collections import defaultdict
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 import wandb
-from typing import Dict
+from typing import Dict, List, Tuple
 import json
 
 from models.classifier.model import create_model, count_parameters
@@ -88,6 +89,18 @@ class Config:
     USE_WANDB = False
     WANDB_PROJECT = "eye-disease-classification"
 
+    # train_random_split / Colab 2-phase (환경변수로 덮어쓰기)
+    IMG_SIZE = int(os.environ.get("IMG_SIZE", "300"))
+    GRAD_ACCUM_STEPS = int(os.environ.get("GRAD_ACCUM_STEPS", "1"))
+    PHASE1_EPOCHS = int(os.environ.get("PHASE1_EPOCHS", "4"))
+    PHASE2_EPOCHS = int(os.environ.get("PHASE2_EPOCHS", "12"))
+    HEAD_LR = float(os.environ.get("HEAD_LR", "1e-3"))
+    FINETUNE_LR = float(os.environ.get("FINETUNE_LR", "1e-5"))
+    HEAD_DROPOUT = float(os.environ.get("HEAD_DROPOUT", "0.4"))
+    LABEL_SMOOTHING = float(os.environ.get("LABEL_SMOOTHING", "0.1"))
+    NUM_WORKERS = int(os.environ.get("NUM_WORKERS", "0"))
+    RESUME_CHECKPOINT = os.environ.get("RESUME_CHECKPOINT", "").strip()
+
 
 def get_device() -> str:
     """디바이스 선택.
@@ -105,6 +118,121 @@ def get_device() -> str:
         return "cuda"
     print("⚠ CPU 사용 (학습이 느릴 수 있습니다)")
     return "cpu"
+
+
+def resolve_batch_size(configured: int) -> int:
+    env_bs = os.environ.get("BATCH_SIZE", "").strip()
+    if env_bs.isdigit() and int(env_bs) > 0:
+        return int(env_bs)
+    return configured if configured > 0 else 16
+
+
+def resolve_num_workers(device: str, configured: int = 0) -> int:
+    env_nw = os.environ.get("NUM_WORKERS", "").strip()
+    if env_nw.isdigit():
+        return int(env_nw)
+    if configured and configured > 0:
+        return configured
+    return 2 if device == "cuda" else 0
+
+
+def _init_disease_stats(diseases: List[str]):
+    d_losses = {d: 0.0 for d in diseases}
+    d_corrects = {d: 0 for d in diseases}
+    d_totals = {d: 0 for d in diseases}
+    d_recall = {d: defaultdict(int) for d in diseases}
+    return d_losses, d_corrects, d_totals, d_recall
+
+
+def _update_recall_stats(recall_stats: dict, disease: str, preds, labels) -> None:
+    for p, t in zip(preds.view(-1).tolist(), labels.view(-1).tolist()):
+        recall_stats[disease][int(t)] += int(p == t)
+
+
+def _run_forward_loss(
+    model: nn.Module,
+    criterion_dict: nn.ModuleDict,
+    images: torch.Tensor,
+    labels: dict,
+    diseases: List[str],
+    device: str,
+) -> Tuple[torch.Tensor, dict, dict, dict, dict]:
+    outputs = model(images)
+    loss = torch.tensor(0.0, device=device)
+    disease_losses: Dict[str, float] = {}
+    disease_corrects: Dict[str, int] = {}
+    disease_totals: Dict[str, int] = {}
+    recall_stats = {d: defaultdict(int) for d in diseases}
+
+    for disease in diseases:
+        disease_labels = labels[disease].to(device)
+        valid_mask = disease_labels >= 0
+        if valid_mask.sum() == 0:
+            continue
+        valid_labels = disease_labels[valid_mask]
+        valid_outputs = outputs[disease][valid_mask]
+        dloss = criterion_dict[disease](valid_outputs, valid_labels)
+        loss = loss + dloss
+        n = int(valid_mask.sum().item())
+        disease_losses[disease] = dloss.item() * n
+        _, preds = torch.max(valid_outputs, 1)
+        disease_corrects[disease] = int((preds == valid_labels).sum().item())
+        disease_totals[disease] = n
+        _update_recall_stats(recall_stats, disease, preds, valid_labels)
+
+    return loss, disease_losses, disease_corrects, disease_totals, recall_stats
+
+
+def _build_metrics(
+    total_loss: float,
+    num_batches: int,
+    d_losses: dict,
+    d_corrects: dict,
+    d_totals: dict,
+    merged_recall: dict,
+    diseases: List[str],
+) -> Dict[str, float]:
+    metrics: Dict[str, float] = {"loss": total_loss / max(num_batches, 1)}
+    for disease in diseases:
+        if d_totals.get(disease, 0) > 0:
+            metrics[f"{disease}_loss"] = d_losses[disease] / d_totals[disease]
+            metrics[f"{disease}_acc"] = d_corrects[disease] / d_totals[disease]
+    return metrics
+
+
+def _mean_disease_metric(metrics: Dict[str, float], suffix: str) -> float:
+    vals = [
+        v for k, v in metrics.items()
+        if k.endswith(suffix) and "_loss" not in k
+    ]
+    return sum(vals) / len(vals) if vals else 0.0
+
+
+def _print_disease_metrics(prefix: str, metrics: Dict[str, float], diseases: List[str]) -> None:
+    print(f"{prefix} per-disease acc:")
+    for d in diseases:
+        key = f"{d}_acc"
+        if key in metrics:
+            print(f"  {d:16s} acc={metrics[key]:.4f}")
+
+
+def _build_optimizer(model: nn.Module, phase: int, config: Config) -> optim.AdamW:
+    if phase == 1:
+        model.freeze_backbone()
+        return optim.AdamW(
+            [p for p in model.parameters() if p.requires_grad],
+            lr=config.HEAD_LR,
+            weight_decay=config.WEIGHT_DECAY,
+        )
+    model.unfreeze_backbone()
+    head = [p for n, p in model.named_parameters() if not n.startswith("backbone.")]
+    return optim.AdamW(
+        [
+            {"params": model.backbone.parameters(), "lr": config.FINETUNE_LR},
+            {"params": head, "lr": config.FINETUNE_LR},
+        ],
+        weight_decay=config.WEIGHT_DECAY,
+    )
 
 
 def train_epoch(

@@ -8,6 +8,9 @@ VL 폴더는 device 편향이 있어 사용하지 않습니다.
   GROUP_NAME=안검             — MODE=subgroup 일 때 필수
   MAX_PER_CLASS=5000            — 클래스당 상한 (group/subgroup, 0=무제한)
   DISEASE_CAPS='{"핵경화":7000,...}' — 질환별 cap (미명시 질환은 MAX_PER_CLASS/stratum)
+  CAP_MODE=stratum|disease_balanced — cap 방식 (기본 stratum)
+  DISEASE_BALANCED_LIMIT=5000   — disease_balanced: 질환당 정상/비정상 총량 상한
+  PRESERVE_SMARTPHONE=true      — disease_balanced: cap 시 SP+비정상 우선 보존
   SPLIT_SEED=42
   VAL_RATIO=0.2
   USE_GROUP_SPLIT=1  — crop_D* 그룹 단위 분할 (기본 ON)
@@ -61,6 +64,7 @@ MEDICAL_DEVICES = frozenset({"검안경", "일반카메라"})
 
 
 SPLIT_MODES = frozenset({"multitask", "group", "subgroup"})
+CAP_MODES = frozenset({"stratum", "disease_balanced"})
 
 
 @dataclass
@@ -89,6 +93,40 @@ def resolve_max_per_class(max_per_class: Optional[int] = None) -> Optional[int]:
     if raw.isdigit() and int(raw) > 0:
         return int(raw)
     return None
+
+
+def resolve_cap_mode(mode: Optional[str] = None) -> str:
+    raw = (mode or os.environ.get("CAP_MODE", "stratum")).strip().lower()
+    if raw not in CAP_MODES:
+        raise ValueError(f"CAP_MODE는 {sorted(CAP_MODES)} 중 하나: {raw}")
+    return raw
+
+
+def resolve_preserve_smartphone(flag: Optional[bool] = None) -> bool:
+    if flag is not None:
+        return bool(flag)
+    return os.environ.get("PRESERVE_SMARTPHONE", "false").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+    )
+
+
+def resolve_disease_balanced_limit(
+    *,
+    disease_limit: Optional[int] = None,
+    max_per_class: Optional[int] = None,
+) -> int:
+    """disease_balanced 질환당 상한 — DISEASE_BALANCED_LIMIT > MAX_PER_CLASS > 5000."""
+    if disease_limit is not None and disease_limit > 0:
+        return int(disease_limit)
+    raw = os.environ.get("DISEASE_BALANCED_LIMIT", "").strip()
+    if raw.isdigit() and int(raw) > 0:
+        return int(raw)
+    cap = resolve_max_per_class(max_per_class)
+    if cap:
+        return cap
+    return 5000
 
 
 def resolve_disease_caps(disease_caps: Optional[Dict[str, int]] = None) -> Dict[str, int]:
@@ -277,6 +315,151 @@ def apply_sample_caps(
         note = f" → {a:,}" if b != a else ""
         print(f"  [{key}] limit={lim:,}: {b:,}{note}")
     print(f"  Total: {len(metas):,} → {len(capped):,}")
+    return capped, stats
+
+
+def _is_smartphone_device(device_name: str) -> bool:
+    return (device_name or "").strip() == SMARTPHONE
+
+
+def _subsampling_items(
+    items: Sequence[SampleMeta],
+    limit: int,
+    rng: random.Random,
+    *,
+    preserve_smartphone: bool = False,
+) -> List[SampleMeta]:
+    """무작위 서브샘플. preserve_smartphone=True 이면 SP+비정상을 마지막까지 보존."""
+    pool = list(items)
+    if len(pool) <= limit:
+        return pool
+
+    if not preserve_smartphone:
+        rng.shuffle(pool)
+        return pool[:limit]
+
+    sp_abn = [m for m in pool if m.label > 0 and _is_smartphone_device(m.device)]
+    other = [m for m in pool if m not in sp_abn]
+
+    if len(sp_abn) >= limit:
+        rng.shuffle(sp_abn)
+        return sp_abn[:limit]
+
+    remain = limit - len(sp_abn)
+    rng.shuffle(other)
+    return sp_abn + other[:remain]
+
+
+def _split_abnormal_limits(total_limit: int, n_labels: int) -> List[int]:
+    """비정상 라벨 n개에 total_limit을 균등 분배 (나머지는 앞쪽 라벨에 +1)."""
+    if n_labels <= 0:
+        return []
+    base = total_limit // n_labels
+    rem = total_limit % n_labels
+    return [base + (1 if i < rem else 0) for i in range(n_labels)]
+
+
+def _print_disease_balanced_summary(
+    metas: Sequence[SampleMeta],
+    *,
+    disease_limit: int,
+) -> None:
+    """질환별 정상/비정상 분포 — 백내장:핵경화 비율 확인용."""
+    by_disease: Dict[str, Dict[str, int]] = defaultdict(lambda: {"normal": 0, "abnormal": 0})
+    for m in metas:
+        key = "normal" if m.label == 0 else "abnormal"
+        by_disease[m.disease][key] += 1
+
+    print(f"\n📊 Disease-balanced cap 분포 (질환당 limit={disease_limit:,})")
+    print(f"  {'질환':<14} {'정상':>8} {'비정상':>8} {'합계':>8}")
+    print("  " + "-" * 42)
+    ref_abn = by_disease.get("백내장", {}).get("abnormal", 0)
+    nuc_abn = by_disease.get("핵경화", {}).get("abnormal", 0)
+    for disease in sorted(by_disease.keys()):
+        d = by_disease[disease]
+        total = d["normal"] + d["abnormal"]
+        print(f"  {disease:<14} {d['normal']:>8,} {d['abnormal']:>8,} {total:>8,}")
+    if ref_abn and nuc_abn:
+        print(f"\n  ★ 백내장:핵경화 비정상 = {ref_abn:,}:{nuc_abn:,} = {ref_abn / nuc_abn:.2f}:1")
+    elif ref_abn or nuc_abn:
+        print(f"\n  ★ 백내장 비정상={ref_abn:,}, 핵경화 비정상={nuc_abn:,}")
+
+
+def apply_disease_balanced_caps(
+    metas: Sequence[SampleMeta],
+    *,
+    disease_limit: int = 5000,
+    seed: int = 42,
+    preserve_smartphone: bool = False,
+) -> Tuple[List[SampleMeta], Dict[str, object]]:
+    """질환별 정상·비정상 총량을 동일 상한으로 맞춤.
+
+    · 정상(무): 질환당 disease_limit
+    · 비정상: 질환당 disease_limit (다중 severity는 라벨 수로 균등 분할)
+    · PRESERVE_SMARTPHONE: 비정상 cap 시 검안경 등을 먼저 제거, SP 비정상 우선
+    """
+    rng = random.Random(seed)
+    by_disease: Dict[str, List[SampleMeta]] = defaultdict(list)
+    for m in metas:
+        by_disease[m.disease].append(m)
+
+    capped: List[SampleMeta] = []
+    stats: Dict[str, object] = {}
+
+    for disease in sorted(by_disease.keys()):
+        items = by_disease[disease]
+        normal = [m for m in items if m.label == 0]
+        abnormal_by_label: Dict[int, List[SampleMeta]] = defaultdict(list)
+        for m in items:
+            if m.label > 0:
+                abnormal_by_label[m.label].append(m)
+
+        normal_out = _subsampling_items(
+            normal, disease_limit, rng, preserve_smartphone=False,
+        )
+        stats[f"{disease}_normal"] = {
+            "before": len(normal),
+            "after": len(normal_out),
+            "limit": disease_limit,
+        }
+
+        abn_labels = sorted(abnormal_by_label.keys())
+        per_label_limits = _split_abnormal_limits(disease_limit, len(abn_labels))
+        abnormal_out: List[SampleMeta] = []
+        for lbl, lim in zip(abn_labels, per_label_limits):
+            group = abnormal_by_label[lbl]
+            out = _subsampling_items(
+                group, lim, rng, preserve_smartphone=preserve_smartphone,
+            )
+            abnormal_out.extend(out)
+            stats[f"{disease}_abnormal_{lbl}"] = {
+                "before": len(group),
+                "after": len(out),
+                "limit": lim,
+            }
+
+        capped.extend(normal_out)
+        capped.extend(abnormal_out)
+        stats[f"{disease}_summary"] = {
+            "normal": len(normal_out),
+            "abnormal": len(abnormal_out),
+            "abnormal_labels": len(abn_labels),
+            "disease_limit": disease_limit,
+        }
+
+    rng.shuffle(capped)
+
+    print(f"\n✂️  Disease-balanced cap (seed={seed})")
+    print(f"  DISEASE_BALANCED_LIMIT: {disease_limit:,} (질환당 정상/비정상 총량)")
+    print(f"  PRESERVE_SMARTPHONE: {preserve_smartphone}")
+    for disease in sorted(by_disease.keys()):
+        sm = stats[f"{disease}_summary"]
+        print(
+            f"  [{disease}] 정상 {sm['normal']:,} + 비정상 {sm['abnormal']:,} "
+            f"({sm['abnormal_labels']} severity)"
+        )
+    print(f"  Total: {len(metas):,} → {len(capped):,}")
+    _print_disease_balanced_summary(capped, disease_limit=disease_limit)
     return capped, stats
 
 
@@ -683,8 +866,11 @@ def create_random_split_dataloaders(
       subgroup  — GROUP_NAME 세부 질환 (RandomSplitTaskDataset)
     """
     split_mode = resolve_split_mode(mode)
+    cap_mode = resolve_cap_mode()
     cap = resolve_max_per_class(max_per_class)
     d_caps = resolve_disease_caps(disease_caps)
+    disease_limit = resolve_disease_balanced_limit(max_per_class=cap)
+    preserve_sp = resolve_preserve_smartphone()
     seed = int(os.environ.get("SPLIT_SEED", "42"))
     group_name = (group_name or os.environ.get("GROUP_NAME", "")).strip() or None
     tl_paths = get_tl_paths(animal_type)
@@ -692,10 +878,15 @@ def create_random_split_dataloaders(
     print(f"\n📁 TL 데이터 수집 (VL 미사용) | MODE={split_mode}")
     if split_mode == "subgroup":
         print(f"  GROUP_NAME={group_name}")
-    if cap:
-        print(f"  MAX_PER_CLASS={cap:,}")
-    if d_caps:
-        print(f"  DISEASE_CAPS={d_caps}")
+    print(f"  CAP_MODE={cap_mode}")
+    if cap_mode == "disease_balanced":
+        print(f"  DISEASE_BALANCED_LIMIT={disease_limit:,}")
+        print(f"  PRESERVE_SMARTPHONE={preserve_sp}")
+    else:
+        if cap:
+            print(f"  MAX_PER_CLASS={cap:,}")
+        if d_caps:
+            print(f"  DISEASE_CAPS={d_caps}")
 
     if aug_preset == "rand":
         from models.classifier.dataset_augment import rand_augment_transforms
@@ -725,7 +916,14 @@ def create_random_split_dataloaders(
         )
 
     cap_stats: Optional[Dict[str, object]] = None
-    if cap is not None or d_caps:
+    if cap_mode == "disease_balanced":
+        metas, cap_stats = apply_disease_balanced_caps(
+            metas,
+            disease_limit=disease_limit,
+            seed=seed,
+            preserve_smartphone=preserve_sp,
+        )
+    elif cap is not None or d_caps:
         metas, cap_stats = apply_sample_caps(
             metas, max_per_class=cap, disease_caps=d_caps, seed=seed,
         )
@@ -795,7 +993,10 @@ def create_random_split_dataloaders(
         **split_meta,
         "mode": split_mode,
         "group_name": group_name,
+        "cap_mode": cap_mode,
         "max_per_class": cap,
+        "disease_balanced_limit": disease_limit if cap_mode == "disease_balanced" else None,
+        "preserve_smartphone": preserve_sp if cap_mode == "disease_balanced" else None,
         "disease_caps": d_caps or None,
         "cap_stats": cap_stats,
         "distribution": dist,

@@ -12,7 +12,8 @@ TL Random Val (SPLIT_SEED=42, VAL_RATIO=0.2) 비정상 샘플만 사용.
   ANIMAL_TYPE=dog|cat
   SPLIT_SEED=42
   VAL_RATIO=0.2
-  CHECKPOINT=  — 기본 models/classifier/checkpoints/{animal}_best_random_split.pth
+  CHECKPOINT=  — 기본 models/classifier/checkpoints/{animal}_best_{random_split|balanced_cap}.pth
+               (CAP_MODE=disease_balanced 이면 balanced_cap)
   BATCH_SIZE=32
   IMG_SIZE=300
   DISEASE_WEIGHTS='{"백내장":0.8}'  — Top-K 재정렬용 질환별 가중 (미명시=1.0)
