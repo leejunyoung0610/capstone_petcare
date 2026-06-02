@@ -48,11 +48,11 @@ from models.classifier.dataset_random_split import (
     SMARTPHONE,
     RandomSplitEyeDataset,
     create_random_split_dataloaders,
-    resolve_cap_mode,
 )
-from models.classifier.eval_multitask_topk import (
-    _active_disease_and_label,
-    _rank_diseases_by_abnormal_prob,
+from models.classifier.random_split_common import (
+    RandomSplitConfig,
+    active_disease_and_label,
+    rank_diseases_by_abnormal_prob,
 )
 from models.classifier.losses import build_per_disease_losses
 from models.classifier.model import create_model, count_parameters
@@ -198,11 +198,11 @@ def _monitor_cataract_top3(
         for i in range(bs):
             if local_idx >= len(val_dataset):
                 break
-            gt_disease, gt_label = _active_disease_and_label(labels, i, diseases)
+            gt_disease, gt_label = active_disease_and_label(labels, i, diseases)
             if gt_disease != target_disease or gt_label <= 0:
                 local_idx += 1
                 continue
-            ranked = _rank_diseases_by_abnormal_prob(outputs, i, diseases)
+            ranked = rank_diseases_by_abnormal_prob(outputs, i, diseases)
             ranked_names = [d for d, _ in ranked]
             if target_disease in ranked_names[:3]:
                 hits += 1
@@ -336,40 +336,6 @@ def _run_phase_ema(
                 return best_val_loss, patience_counter, best_path, last_epoch
 
     return best_val_loss, patience_counter, best_path, last_epoch
-
-
-class RandomSplitConfig(BaseTrainConfig):
-    ANIMAL_TYPE = os.environ.get("ANIMAL_TYPE", "dog").strip().lower()
-    SPLIT_SEED = int(os.environ.get("SPLIT_SEED", "42"))
-    VAL_RATIO = float(os.environ.get("VAL_RATIO", "0.2"))
-    USE_GROUP_SPLIT = os.environ.get("USE_GROUP_SPLIT", "1").strip().lower() in (
-        "1",
-        "true",
-        "yes",
-    )
-    CAP_MODE = resolve_cap_mode()
-
-    @staticmethod
-    def _checkpoint_suffix() -> str:
-        if resolve_cap_mode() == "disease_balanced":
-            return "balanced_cap"
-        return "random_split"
-
-    @staticmethod
-    def best_checkpoint(animal: str) -> str:
-        suffix = RandomSplitConfig._checkpoint_suffix()
-        return os.path.join(
-            RandomSplitConfig.OUTPUT_DIR,
-            f"{animal}_best_{suffix}.pth",
-        )
-
-    @staticmethod
-    def final_checkpoint(animal: str) -> str:
-        suffix = RandomSplitConfig._checkpoint_suffix()
-        return os.path.join(
-            RandomSplitConfig.OUTPUT_DIR,
-            f"{animal}_final_{suffix}.pth",
-        )
 
 
 def _resolve_resume_path(config: RandomSplitConfig) -> str:

@@ -46,20 +46,20 @@ from models.classifier.dataset_random_split import (
     RandomSplitEyeDataset,
     create_random_split_dataloaders,
 )
-from models.classifier.eval_multitask_topk import (
-    _active_disease_and_label,
-    _rank_diseases_by_abnormal_prob,
-    head_abnormal_probability,
-    resolve_checkpoint,
-)
+from models.classifier.eval_multitask_topk import resolve_checkpoint
 from models.classifier.eval_multitask_topk_calibrated import (
     make_subset_loader,
     split_val_cal_test_indices,
 )
 from models.classifier.inference_multitask import extract_state_dict
 from models.classifier.model import create_model
+from models.classifier.random_split_common import (
+    RandomSplitConfig,
+    active_disease_and_label as _active_disease_and_label,
+    head_abnormal_probability,
+    rank_diseases_by_abnormal_prob as _rank_diseases_by_abnormal_prob,
+)
 from models.classifier.train import get_device, resolve_batch_size, resolve_num_workers
-from models.classifier.train_random_split import RandomSplitConfig
 
 SampleRecord = Dict[str, object]
 

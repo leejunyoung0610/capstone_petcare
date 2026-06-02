@@ -52,10 +52,8 @@ from models.classifier.eval_multitask_topk import (
 from models.classifier.inference_multitask import extract_state_dict
 from models.classifier.model import create_model
 from models.classifier.train import get_device, resolve_batch_size, resolve_num_workers
-from models.classifier.train_random_split import (
-    RandomSplitConfig,
-    evaluate_device_subsets,
-)
+from models.classifier.random_split_common import RandomSplitConfig
+from models.classifier.train_random_split import evaluate_device_subsets
 
 REF_DISEASE = "백내장"
 

@@ -38,7 +38,6 @@ from typing import Dict, List, Optional, Sequence, Tuple
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
@@ -54,10 +53,15 @@ from models.classifier.dataset_random_split import (
 )
 from models.classifier.inference_multitask import extract_state_dict
 from models.classifier.model import create_model
+from models.classifier.random_split_common import (
+    RandomSplitConfig,
+    TOP_KS,
+    active_disease_and_label as _active_disease_and_label,
+    device_bucket as _device_bucket,
+    head_abnormal_probability,
+    rank_diseases_by_abnormal_prob as _rank_diseases_by_abnormal_prob,
+)
 from models.classifier.train import get_device, resolve_batch_size, resolve_num_workers
-from models.classifier.train_random_split import RandomSplitConfig
-
-TOP_KS = (1, 2, 3, 5)
 
 
 def resolve_exclude_heads(
@@ -106,52 +110,6 @@ def resolve_checkpoint(animal_type: str) -> Path:
             "  train_random_split.py 학습 후 실행하거나 CHECKPOINT= 지정"
         )
     return path
-
-
-def head_abnormal_probability(logits: torch.Tensor) -> float:
-    """헤드별 P(비정상) = 1 - P(클래스 0=무)."""
-    probs = F.softmax(logits, dim=-1)
-    return (1.0 - probs[0]).item()
-
-
-def _active_disease_and_label(
-    labels: Dict[str, torch.Tensor],
-    sample_i: int,
-    diseases: Sequence[str],
-) -> Tuple[Optional[str], int]:
-    for d in diseases:
-        y = labels[d][sample_i].item()
-        if y >= 0:
-            return d, y
-    return None, -1
-
-
-def _rank_diseases_by_abnormal_prob(
-    outputs: Dict[str, torch.Tensor],
-    sample_i: int,
-    diseases: Sequence[str],
-    disease_weights: Optional[Dict[str, float]] = None,
-    exclude_heads: Optional[frozenset[str]] = None,
-) -> List[Tuple[str, float]]:
-    weights = disease_weights or {}
-    excluded = exclude_heads or frozenset()
-    scored = []
-    for d in diseases:
-        if d in excluded:
-            continue
-        prob = head_abnormal_probability(outputs[d][sample_i])
-        w = weights.get(d, 1.0)
-        scored.append((d, prob * w))
-    scored.sort(key=lambda x: (-x[1], x[0]))
-    return scored
-
-
-def _device_bucket(device_name: str) -> str:
-    if device_name == SMARTPHONE:
-        return SMARTPHONE
-    if device_name in MEDICAL_DEVICES:
-        return "medical"
-    return "other"
 
 
 @torch.no_grad()

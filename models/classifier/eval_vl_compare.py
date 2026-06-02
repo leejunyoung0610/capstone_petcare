@@ -46,7 +46,8 @@ from models.classifier.dataset_random_split import (
 )
 from models.classifier.model import create_model
 from models.classifier.train import get_device, resolve_batch_size, resolve_num_workers
-from models.classifier.train_random_split import RandomSplitConfig, evaluate_device_subsets
+from models.classifier.random_split_common import RandomSplitConfig
+from models.classifier.train_random_split import evaluate_device_subsets
 
 DOG_VL_PATHS = ["eye_data/VL/개/안구/일반"]
 CAT_VL_PATHS = ["eye_data/VL/고양이/안구/일반"]

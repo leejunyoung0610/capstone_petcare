@@ -53,7 +53,7 @@ from models.classifier.train import (
     resolve_num_workers,
 )
 from models.classifier.train_common import create_ema, ema_state_dict, eval_model
-from models.classifier.train_random_split import RandomSplitConfig
+from models.classifier.random_split_common import RandomSplitConfig
 
 DEFAULT_DOG_HEAD_LOSS_WEIGHTS: Dict[str, float] = {
     "백내장": 0.5,
