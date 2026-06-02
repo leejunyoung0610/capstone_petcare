@@ -540,12 +540,42 @@ def _print_cap_stats(cap_stats: Dict[str, object]) -> None:
         print("\n  (2차 cap 미적용 — MAX_PER_CLASS·DISEASE_CAPS 모두 비어 있음)")
         return
     print(f"\n{'=' * 72}")
-    print("2차 cap 적용 상세 (apply_sample_caps stats)")
+    print("2차 cap 적용 상세")
     print("=" * 72)
     for key, st in sorted(cap_stats.items()):
-        b, a, lim = st["before"], st["after"], st["limit"]
-        hit = " ✂️" if b != a else ""
-        print(f"  [{key}] limit={lim:,}: {b:,} → {a:,}{hit}")
+        if not isinstance(st, dict):
+            print(f"  [{key}] {st}")
+            continue
+
+        # apply_sample_caps / apply_disease_balanced_caps 공통 상세 항목
+        b = st.get("before")
+        a = st.get("after")
+        lim = st.get("limit")
+        if b is not None and a is not None and lim is not None:
+            hit = " ✂️" if b != a else ""
+            print(f"  [{key}] limit={lim:,}: {b:,} → {a:,}{hit}")
+            continue
+
+        # disease_balanced summary 항목 (normal/abnormal 집계)
+        if "normal" in st and "abnormal" in st:
+            n = int(st.get("normal", 0))
+            abn = int(st.get("abnormal", 0))
+            labels = int(st.get("abnormal_labels", 0))
+            dlim = st.get("disease_limit", "N/A")
+            total = n + abn
+            if isinstance(dlim, int):
+                dlim_str = f"{dlim:,}"
+            else:
+                dlim_str = str(dlim)
+            print(
+                f"  [{key}] disease_limit={dlim_str}: "
+                f"정상 {n:,} + 비정상 {abn:,} (severity={labels}) = {total:,}"
+            )
+            continue
+
+        # 알 수 없는 구조도 안전하게 표시
+        payload = ", ".join(f"{k}={v}" for k, v in sorted(st.items()))
+        print(f"  [{key}] {payload}")
 
 
 def load_capped_metas(
