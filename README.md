@@ -16,11 +16,11 @@
 ### 보호자 (모바일 PWA)
 
 <p align="center">
-  <img src="screenshots/main.png" alt="반려동물 등록 및 홈" width="180" />
-  <img src="screenshots/camera.png" alt="안구 사진 촬영·업로드" width="180" />
-  <img src="screenshots/result-top3.png" alt="Top-3 질환 스크리닝 결과" width="180" />
-  <img src="screenshots/result-report.png" alt="Claude AI 종합 소견 리포트" width="180" />
-  <img src="screenshots/map.png" alt="Kakao Map 동물병원 찾기" width="180" />
+  <img src="screenshots/main.png" alt="반려동물 등록 및 홈" width="200" height="414" />
+  <img src="screenshots/camera.png" alt="안구 사진 촬영·업로드" width="200" height="414" />
+  <img src="screenshots/result-top3.png" alt="Top-3 질환 스크리닝 결과" width="200" height="414" />
+  <img src="screenshots/result-report.png" alt="Claude AI 종합 소견 리포트" width="200" height="414" />
+  <img src="screenshots/map.png" alt="Kakao Map 동물병원 찾기" width="200" height="414" />
 </p>
 
 | 화면 | 설명 |
