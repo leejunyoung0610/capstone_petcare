@@ -1,269 +1,205 @@
-# 반려동물 안구질환 AI 모델
+# 🐾 GANADI — 반려동물 안과질환 AI 스크리닝 플랫폼
 
-세종대학교 컴퓨터공학과 캡스톤디자인 2026-1
+> 반려동물의 **안구 사진 한 장**으로 10종 안과질환을 AI가 스크리닝하고,  
+> 주변 동물병원·수의사 소견까지 연결하는 **모바일 웹(PWA)** 서비스
 
----
+[![Live Demo](https://img.shields.io/badge/demo-ganadi.site-6366f1?style=for-the-badge)](https://ganadi.site)
+[![Period](https://img.shields.io/badge/기간-2026.03~2026.06-blue?style=for-the-badge)](https://ganadi.site)
+[![Stack](https://img.shields.io/badge/stack-FastAPI_·_React_·_PyTorch-0ea5e9?style=for-the-badge)](#-기술-스택)
 
-## 프로젝트 개요
-
-반려동물(강아지/고양이) 안구 이미지를 입력받아 질환을 AI로 스크리닝하는 모델.  
-보호자가 스마트폰으로 찍은 사진을 넣으면 질환별 확률을 출력합니다.
-
-웹은 `frontend/`, 앱·DB 연동 API는 `backend/`, 이미지 추론 API는 `api/`에서 각각 실행합니다.
-
-조직 GitHub에 **프론트·백·AI 레포가 분리**되어 있을 때, 클론 후 포트·환경변수까지 한 번에 맞추는 방법은 [docs/GANADI_LOCAL_RUN.md](docs/GANADI_LOCAL_RUN.md)를 참고하세요.
+**세종대학교 컴퓨터공학과 캡스톤디자인 2026-1**
 
 ---
 
-## 환경 설정
+## 📸 서비스 화면
 
-Python **3.10+** 권장. macOS·Windows·Linux 모두 동일한 저장소 구조로 동작합니다.
+### 보호자 (모바일 PWA)
 
-**가상환경(`venv`) 폴더는 OS마다 생기는 구조가 다릅니다.** 이건 정상입니다.
+<p align="center">
+  <img src="screenshots/main.png" alt="반려동물 등록 및 홈" width="180" />
+  <img src="screenshots/camera.png" alt="안구 사진 촬영·업로드" width="180" />
+  <img src="screenshots/result-top3.png" alt="Top-3 질환 스크리닝 결과" width="180" />
+  <img src="screenshots/result-report.png" alt="Claude AI 종합 소견 리포트" width="180" />
+  <img src="screenshots/map.png" alt="Kakao Map 동물병원 찾기" width="180" />
+</p>
 
-| | macOS / Linux | Windows |
-|---|----------------|---------|
-| 실행 파일 위치 | `venv/bin/python` | `venv\Scripts\python.exe` |
-| 활성화 스크립트 | `venv/bin/activate` | `venv\Scripts\activate.bat` 또는 `Activate.ps1` |
-| 경로 구분자 | `/` (슬래시) | `\` (백슬래시) |
+| 화면 | 설명 |
+|------|------|
+| **반려동물 관리** | 보호자·반려동물 프로필 등록, AI 분석 진입 |
+| **사진 업로드** | 카메라 촬영 또는 갤러리 업로드 → 안구 크롭 |
+| **Top-3 결과** | 10종 질환 중 의심 Top-3 + 병원 방문 CTA |
+| **AI 리포트** | Claude API 기반 자연어 종합 소견 + PDF 다운로드 |
+| **병원 찾기** | Kakao Map 연동, GANADI 인증 병원 우선 표시 |
 
-명령은 똑같이 `python -m venv venv` 인데, Python이 OS에 맞는 레이아웃으로 만듭니다. **`venv/`는 Git에 올리지 않으므로**(`.gitignore`) 맥에서 만든 폴더를 윈도로 복사할 필요도 없고, **각자 PC에서 새로 만들면** 됩니다.
+### 수의사 · 관리자 포털 (PC)
 
-### 1. 가상환경 생성
+<p align="center">
+  <img src="screenshots/vet-portal.png" alt="수의사 포털 — 완료된 소견" width="420" />
+  <img src="screenshots/admin-dashboard.png" alt="관리자 대시보드" width="420" />
+</p>
 
-**macOS / Linux**
+| 역할 | 주요 기능 |
+|------|-----------|
+| **수의사** | 소견 요청 수신·작성, 완료 이력·평점 관리 |
+| **관리자** | 사용자/수의사 승인, 신고 처리, 월별 통계·학습 데이터 수집 |
 
-```bash
-python3 -m venv venv
-source venv/bin/activate
+---
+
+## 🏗 시스템 아키텍처
+
+<p align="center">
+  <img src="screenshots/architecture.png" alt="GANADI 시스템 구성도" width="720" />
+</p>
+
+```
+┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+│  React PWA  │────▶│  FastAPI     │────▶│  AI Server  │
+│  (모바일)    │     │  REST API    │     │  ONNX 추론  │
+└─────────────┘     └──────┬──────┘     └──────┬──────┘
+                           │                    │
+                    ┌──────┴──────┐      ┌─────┴──────┐
+                    │ MySQL (RDS) │      │ Claude API │
+                    │ S3 (이미지)  │      │ ReportLab  │
+                    └─────────────┘      └────────────┘
 ```
 
-**Windows (PowerShell 또는 CMD)**
+| 계층 | 역할 |
+|------|------|
+| **Frontend** | React + Vite PWA, Zustand 상태관리, Kakao OAuth/Map |
+| **Backend** | JWT 인증, 반려동물·진단·소견·알림 API, S3 업로드 |
+| **AI Server** | EfficientNet-B3 멀티태스크 추론, GradCAM, PDF 생성 |
+| **Infra** | AWS EC2, Docker Compose, Nginx, HTTPS (`ganadi.site`) |
 
-```bat
-py -3 -m venv venv
-venv\Scripts\activate
-```
+---
 
-(`python` / `py` 중 설치에 맞는 쪽을 사용하면 됩니다.)
+## ✨ 주요 기능
 
-**동작 확인** — 프롬프트 앞에 `(venv)`가 보이면 성공입니다.
+### 🤖 AI 스크리닝
+
+- 안구 사진 → **10종 질환 Top-3** 스크리닝 (강아지 10 / 고양이 5)
+- **EfficientNet-B3** 멀티태스크 모델 + **10-class Softmax 감별 헤드**
+- **ONNX INT8** 추론 ~38ms (PyTorch 대비 **11.6×** 가속, EC2 CPU 기준)
+- **Claude API** 기반 진단 결과 자연어 해석 + **ReportLab PDF** 리포트
+- 의료법 준수: "진단"이 아닌 **"AI 스크리닝 소견"** 표현 사용
+
+### 📱 서비스 기능
+
+- 카메라 촬영 → 안구 크롭 → 실시간 AI 분석
+- Kakao Map 기반 주변 동물병원 + **GANADI 인증** 병원 필터
+- **보호자 / 수의사 / 관리자** 3종 포털
+- Kakao OAuth 로그인, **Web Push** 알림, 진단 이력 관리
+
+---
+
+## 🔬 AI 성과
+
+> 강아지 Validation (random split, 비정상 샘플 기준). Softmax 감별 헤드 도입 전·후 비교.
+
+| 지표 | 개선 전 | 개선 후 |
+|------|---------|---------|
+| **Top-1 정확도** | 27.25% | **53.77%** (≈2×) |
+| **Top-3 정확도** | 51.65% | **84.35%** (+32.7%p) |
+| **Device 의존성** | 9.08%p | **2.72%p** |
+| **추론 시간 (CPU)** | 443ms | **38ms** (11.6×) |
+| **모델 크기** | 214MB | **18MB** (INT8) |
+
+추가 검증·벤치마크: [`models/classifier/checkpoints/README.md`](models/classifier/checkpoints/README.md)
+
+---
+
+## 🛠 기술 스택
+
+| 영역 | 기술 |
+|------|------|
+| **Frontend** | React, TypeScript, Vite, Tailwind CSS, Zustand, PWA |
+| **Backend** | FastAPI, JWT (bcrypt), SQLAlchemy, Alembic, httpx |
+| **Database** | MySQL (AWS RDS), AWS S3 |
+| **AI/ML** | PyTorch, EfficientNet-B3, ONNX Runtime, GradCAM |
+| **External API** | Claude API, Kakao OAuth, Kakao Map |
+| **Infra** | Docker Compose, AWS EC2, Nginx, GitHub Actions |
+
+---
+
+## 👤 담당 역할
+
+**프론트엔드 + 백엔드 + AI 파이프라인 전체 1인 담당**
+
+- UI/UX 설계 및 React PWA 구현 (보호자·수의사·관리자)
+- FastAPI 백엔드·DB 스키마·JWT 인증·배포 파이프라인
+- 데이터 전처리, 멀티태스크 학습, ONNX 변환·양자화, 추론 API
+- AWS EC2 프로덕션 배포 및 `ganadi.site` 운영
+
+---
+
+## 🚀 실행 방법
+
+### 빠른 시작 (모노레포 로컬)
 
 ```bash
-python -c "import sys; print(sys.executable)"
-# 경로 끝에 .../venv/bin/python (맥·리눅스) 또는 ...\venv\Scripts\python.exe (윈도) 가 나와야 합니다.
-```
+git clone https://github.com/leejunyoung0610/capstone_petcare.git
+cd capstone_petcare
 
-#### 가상환경이 안 될 때
-
-**macOS**
-
-- `python3: command not found` → Xcode CLI 도구 또는 [python.org](https://www.python.org/downloads/)에서 Python 3.10+ 설치 후 터미널을 다시 엽니다.
-- `Permission denied` → **시스템** Python에 `sudo`로 `venv` 만들지 말고, 위처럼 **일반 사용자** 권한으로 프로젝트 폴더 안에서 다시 시도합니다.
-- 이미 깨진 `venv` 폴더가 있으면 삭제 후 재생성: `rm -rf venv` → `python3 -m venv venv`
-
-**Windows**
-
-- `py` / `python` 둘 다 안 됨 → [python.org](https://www.python.org/downloads/windows/) 설치 시 **“Add python.exe to PATH”** 체크. Microsoft Store 버전만 있으면 가끔 `venv`가 꼬이므로, 공식 설치본을 쓰는 것을 권장합니다.
-- PowerShell에서 `activate` 실행이 막힘 → 한 번만 실행:
-  ```powershell
-  Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
-  ```
-  그 다음 `venv\Scripts\Activate.ps1` (또는 CMD에서는 `venv\Scripts\activate.bat`).
-- **백엔드**는 저장소 기준 `backend` 폴더로 들어가서 **별도** 가상환경을 만듭니다.
-  ```bat
-  cd backend
-  py -3 -m venv venv
-  venv\Scripts\activate
-  pip install -r requirements.txt
-  ```
-
-**Linux**
-
-- `ensurepip` 오류 → `sudo apt install python3-venv` (Ubuntu/Debian 계열) 후 다시 `python3 -m venv venv`.
-
-### 2. 패키지 설치
-
-```bash
-pip install --upgrade pip
+# 1) AI 서버 (포트 8000 또는 8010)
+python -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
+uvicorn api.main:app --reload --host 0.0.0.0 --port 8000
+
+# 2) 백엔드 (포트 8001) — 별도 터미널
+cd backend && python -m venv venv && source venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env   # DATABASE_URL, AI_SERVER_URL 설정
+alembic upgrade head
+python -m app.main
+
+# 3) 프론트 (포트 5173) — 별도 터미널
+cd frontend && npm install && npm run dev
 ```
 
-루트 `requirements.txt`는 AI(`api/`)용입니다. 백엔드만 쓸 때는 `backend/requirements.txt`를 따로 설치하세요.
+브라우저: **http://localhost:5173**
 
-### 3. 디바이스 가속 확인
+상세 가이드 (MySQL, 시드 데이터, 환경변수): [`docs/GANADI_LOCAL_RUN.md`](docs/GANADI_LOCAL_RUN.md)
 
-**macOS (Apple Silicon)** — MPS:
+### 프로덕션 (Docker Compose)
 
 ```bash
-python -c "import torch; print('MPS:', torch.backends.mps.is_available())"
+cd backend
+docker compose -f docker-compose.prod.yml up -d
 ```
 
-**Windows / Linux** — NVIDIA GPU가 있으면 CUDA가 잡히는지 확인:
-
-```bash
-python -c "import torch; print('CUDA:', torch.cuda.is_available())"
-```
-
-GPU가 없거나 CUDA 미설치면 **CPU로 동작**합니다(느려질 수 있음).
-
-### 4. OS별로 자주 하는 설정
-
-| 항목 | macOS / Linux | Windows |
-|------|----------------|---------|
-| 프론트 실행 | `cd frontend && npm install && npm run dev` | 동일 |
-| 포트 점유 확인 | `lsof -i :8000` | `netstat -ano` 후 8000 포트 PID 확인 |
-| Git 줄바꿈 | 기본 LF 유지 가능 | `git config --global core.autocrlf true` 권장 |
-
-PDF 한글은 **macOS**는 AppleGothic/나눔, **Windows**는 맑은 고딕(`malgun.ttf`) 등이 있으면 `api` 서버가 자동으로 찾습니다.
+배포 상세: [`backend/docs/DEPLOYMENT.md`](backend/docs/DEPLOYMENT.md)
 
 ---
 
-## 프로젝트 구조
+## 📁 프로젝트 구조
 
 ```
 capstone_petcare/
-├── venv/                   # 가상환경 (git 제외)
-├── eye_data/              # 데이터셋
-├── models/
-│   └── classifier/        # EfficientNet-B3 질환 분류 모델
-│       ├── dataset.py
-│       ├── model.py
-│       ├── train.py
-│       └── predict.py
-├── api/                   # AI 추론 FastAPI (예: 포트 8000)
-│   └── main.py
-├── backend/               # 앱 백엔드 API (DB·인증·진단 연계)
-├── frontend/            # 웹 UI (Vite + React)
-├── requirements.txt       # 루트(AI) 패키지 의존성
-├── .gitignore
-└── README.md
+├── frontend/          # React PWA (Vite)
+├── backend/           # FastAPI · MySQL · JWT
+├── api/               # AI 추론 · Claude · PDF
+├── models/classifier/ # 학습·ONNX·벤치마크
+├── screenshots/       # README용 서비스 캡처
+└── docs/              # 로컬 실행·배포 문서
 ```
 
 ---
 
-## 모델 구성
+## 📚 추가 문서
 
-### EfficientNet-B3 멀티태스크 질환 분류
-- 공유 백본(EfficientNet-B3) + 질환별 독립 분류 헤드
-- 강아지/고양이 각각 별도 모델로 학습
-- 각 질환 헤드가 독립적으로 유무/중증도 분류
-- 복합 질환 동시 감지 가능
-
----
-
-## 강아지 모델 질환 헤드
-
-| 질환 | 클래스 | 폴더 |
-|------|--------|------|
-| 결막염 | 무/유 | eye_data/TL1/개/안구/일반/결막염/ |
-| 궤양성각막질환 | 무/상/하 | eye_data/TL1/개/안구/일반/궤양성각막질환/ |
-| 백내장 | 무/초기/비성숙/성숙 | eye_data/TL1/개/안구/일반/백내장/ |
-| 비궤양성각막질환 | 무/상/하 | eye_data/TL1/개/안구/일반/비궤양성각막질환/ |
-| 색소침착성각막염 | 무/유 | eye_data/TL1/개/안구/일반/색소침착성각막염/ |
-| 안검내반증 | 무/유 | eye_data/TL2/개/안구/일반/안검내반증/ |
-| 안검염 | 무/유 | eye_data/TL2/개/안구/일반/안검염/ |
-| 안검종양 | 무/유 | eye_data/TL2/개/안구/일반/안검종양/ |
-| 유루증 | 무/유 | eye_data/TL2/개/안구/일반/유루증/ |
-| 핵경화 | 무/유 | eye_data/TL2/개/안구/일반/핵경화/ |
-
-## 고양이 모델 질환 헤드
-
-| 질환 | 클래스 | 폴더 |
-|------|--------|------|
-| 각막궤양 | 무/유 | eye_data/TL2/고양이/안구/일반/각막궤양/ |
-| 각막부골편 | 무/유 | eye_data/TL2/고양이/안구/일반/각막부골편/ |
-| 결막염 | 무/유 | eye_data/TL2/고양이/안구/일반/결막염/ |
-| 비궤양성각막염 | 무/유 | eye_data/TL2/고양이/안구/일반/비궤양성각막염/ |
-| 안검염 | 무/유 | eye_data/TL2/고양이/안구/일반/안검염/ |
+| 문서 | 내용 |
+|------|------|
+| [PROJECT_DOCUMENTATION.md](PROJECT_DOCUMENTATION.md) | 전체 기능·API·모델 상세 |
+| [docs/GANADI_LOCAL_RUN.md](docs/GANADI_LOCAL_RUN.md) | 로컬 3-tier 실행 |
+| [models/classifier/checkpoints/README.md](models/classifier/checkpoints/README.md) | 모델 파일·ONNX 벤치마크 |
 
 ---
 
-## 데이터셋 구조
+## ⚠️ 면책
 
-```
-eye_data/
-├── TL1/          # 라벨링 데이터 (크롭 완료 400×400)
-│   └── 개/안구/일반/{질환}/{중증도}/
-│       ├── crop_D0_xxxxx.jpg   # 크롭 이미지
-│       └── crop_D0_xxxxx.json  # 라벨 JSON
-├── TL2/          # 라벨링 데이터 추가 질환
-│   ├── 개/안구/일반/{질환}/{중증도}/
-│   └── 고양이/안구/일반/{질환}/{중증도}/
-├── VL/           # Validation 라벨링 데이터
-└── TS1/          # 원천 데이터 (원본 고해상도 3264×2448)
-    └── 개/안구/일반/{질환}/{중증도}/
-        ├── D0_xxxxx.jpg    # 원본 이미지 (crop_ 없음)
-        └── D0_xxxxx.json   # JSON (label_bbox 포함)
-```
-
-### 핵심 JSON 필드
-
-```json
-{
-  "images": {
-    "meta": {
-      "file_name": "D0_02f99e22-xxxx.jpg",
-      "device": "일반카메라",
-      "breed": "말티즈",
-      "age": 3,
-      "gender": "수컷"
-    }
-  },
-  "label": {
-    "label_deleted": 0,
-    "label_disease_nm": "결막염",
-    "label_disease_lv_1": "유",
-    "label_disease_lv_2": "유",
-    "label_disease_lv_3": "유",
-    "label_bbox": [x, y, w, h]
-  }
-}
-```
-
-### 데이터 필터 조건
-
-```python
-if label["label_deleted"] == 1: skip          # 삭제된 데이터
-if device in ["안구초음파", "안저카메라"]: skip  # 전문 장비 이미지 제외
-label = label["label_disease_lv_3"]            # 확정 라벨만 사용
-```
+본 서비스는 **의료 진단을 대체하지 않습니다.** AI 결과는 참고용 스크리닝 소견이며, 정확한 진단·치료는 반드시 수의사와 상담하세요.
 
 ---
 
-## 기술 스택
+## 📄 라이선스
 
-- Python 3.10+
-- PyTorch 2.x + MPS (MacBook M4)
-- timm (EfficientNet-B3)
-- Albumentations (augmentation)
-- pytorch-grad-cam (GradCAM 히트맵)
-- FastAPI + Uvicorn (AI 서버)
-- ONNX Runtime (추론 최적화)
-
----
-
-## UUID 매칭 방법 (TS ↔ TL)
-
-```
-TL 파일: crop_D0_02f99e22-60a5-11ec-8402-0a7404972c70.jpg
-TS 파일:       D0_02f99e22-60a5-11ec-8402-0a7404972c70.jpg
-
-"crop_" 제거하면 동일한 UUID → 1:1 매칭 가능
-TL JSON의 label_bbox를 TS 원본 이미지와 매칭해 학습·전처리 파이프라인에 활용
-```
-
----
-
-## 개발 단계
-
-1. ✅ 환경 설정 및 프로젝트 구조 생성
-2. ⬜ EfficientNet-B3 질환 분류 모델 학습·튜닝
-3. ✅ FastAPI 기반 추론 API (`api/`)
-4. ⬜ 모델 최적화 및 배포
-
----
-
-## 라이선스
-
-세종대학교 컴퓨터공학과 캡스톤디자인 프로젝트
+세종대학교 컴퓨터공학과 캡스톤디자인 프로젝트 (2026)
