@@ -15,13 +15,15 @@
 
 ### 보호자 (모바일 PWA)
 
-<p align="center">
-  <img src="screenshots/main.png" alt="반려동물 등록 및 홈" width="200" height="414" />
-  <img src="screenshots/camera.png" alt="안구 사진 촬영·업로드" width="200" height="414" />
-  <img src="screenshots/result-top3.png" alt="Top-3 질환 스크리닝 결과" width="200" height="414" />
-  <img src="screenshots/result-report.png" alt="Claude AI 종합 소견 리포트" width="200" height="414" />
-  <img src="screenshots/map.png" alt="Kakao Map 동물병원 찾기" width="200" height="414" />
-</p>
+<table align="center">
+  <tr>
+    <td align="center" valign="top"><img src="screenshots/main.png" width="160" alt="반려동물 등록 및 홈" /></td>
+    <td align="center" valign="top"><img src="screenshots/camera.png" width="160" alt="안구 사진 촬영·업로드" /></td>
+    <td align="center" valign="top"><img src="screenshots/result-top3.png" width="160" alt="Top-3 질환 스크리닝 결과" /></td>
+    <td align="center" valign="top"><img src="screenshots/result-report.png" width="160" alt="Claude AI 종합 소견 리포트" /></td>
+    <td align="center" valign="top"><img src="screenshots/map.png" width="160" alt="Kakao Map 동물병원 찾기" /></td>
+  </tr>
+</table>
 
 | 화면 | 설명 |
 |------|------|
