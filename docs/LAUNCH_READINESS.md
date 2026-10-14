@@ -168,7 +168,7 @@
 ## 관련 문서
 
 - [DEPLOYMENT.md](./DEPLOYMENT.md) — 배포 절차·스크립트
-- [CHANGELOG_SESSION_2026-05-19.md](./CHANGELOG_SESSION_2026-05-19.md) — 기능 변경 이력
+- [CHANGELOG_SESSION_2026-05-19.md](./history/CHANGELOG_SESSION_2026-05-19.md) — 기능 변경 이력
 
 ---
 

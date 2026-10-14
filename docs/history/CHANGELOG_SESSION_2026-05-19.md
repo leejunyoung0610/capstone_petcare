@@ -60,7 +60,7 @@
 ## 문서
 
 - **`docs/LAUNCH_READINESS.md`** — 배포 전 P0~P2 체크리스트·5일 계획·smoke test
-- **`docs/CHANGELOG_SESSION_2026-05-19.md`** — 본 문서
+- **`docs/history/CHANGELOG_SESSION_2026-05-19.md`** — 본 문서
 
 ---
 
