@@ -124,12 +124,26 @@
 
 ## 👤 담당 역할
 
-**프론트엔드 + 백엔드 + AI 파이프라인 전체 1인 담당**
+4인 캡스톤 팀의 팀장으로 아키텍처 설계, AI 파이프라인(데이터 분할·학습·ONNX 경량화), 백엔드·프론트엔드 핵심 구현과 AWS 배포를 맡았고, 팀원들은 수의사 소견서 PDF 기능과 UI 개선·QA를 분담했습니다.
 
-- UI/UX 설계 및 React PWA 구현 (보호자·수의사·관리자)
-- FastAPI 백엔드·DB 스키마·JWT 인증·배포 파이프라인
-- 데이터 전처리, 멀티태스크 학습, ONNX 변환·양자화, 추론 API
+- 시스템 아키텍처 설계 (React PWA · FastAPI 백엔드 · AI 추론 서버 분리, Docker Compose)
+- 데이터 분할(TL random split), 멀티태스크 학습·평가, ONNX 변환·INT8 양자화, 추론 API
+- FastAPI 백엔드·DB 스키마·JWT 인증, React PWA 핵심 화면 (보호자·수의사·관리자)
 - AWS EC2 프로덕션 배포 및 `ganadi.site` 운영
+
+---
+
+## 🤝 팀과 저장소
+
+- **이 모노레포(`capstone_petcare`)가 개발 기준 저장소(source of truth)** 이고, 조직 저장소 [GANADI-frontend](https://github.com/GANADI-Capstone/GANADI-frontend) · [GANADI-backend](https://github.com/GANADI-Capstone/GANADI-backend) · [GANADI-AI](https://github.com/GANADI-Capstone/GANADI-AI) 는 각각 `frontend/` · `backend/` · `api/`+`models/` 를 동기화한 미러입니다 ([동기화 절차](docs/GANADI_ORG_SYNC.md)).
+- 팀원 커밋은 조직 저장소에 원본 이력이 있고, 이 모노레포에는 동기화 커밋으로 반영했습니다. 단, 2026-06-01 수의사 소견서 PDF(`/api/ai/opinion-pdf`) 관련 커밋은 현재 조직 저장소에만 있습니다.
+
+| 팀원 (GitHub 핸들 / 커밋 작성자명) | 기여 |
+|------|------|
+| `@leejunyoung0610` (팀장) | 아키텍처, AI 파이프라인, 백엔드·프론트엔드 핵심 구현, AWS 배포·운영 |
+| `@woojin-archive` | 수의사 소견서 PDF 생성 (AI 서버 엔드포인트 · 백엔드 API · 프론트 다운로드 흐름), 관리자 사용자 정지 해제 버튼, 질환 라벨·안내 문구 수정 |
+| `@wldn7601` | nginx CSP 헤더 수정, React Hooks 호출 순서 버그(React error #310) 수정, 소견서 PDF 한글 파일명 인코딩, 수의사 화면 이미지 표시 수정 |
+| 박민지 | 헤더 중복·신고 시간 표기·반려동물 삭제 반영·알림 아이콘 등 UI 버그 수정 및 버튼 디자인 통일 |
 
 ---
 
