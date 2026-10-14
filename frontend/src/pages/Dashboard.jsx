@@ -70,9 +70,9 @@ export default function Dashboard() {
           {
             icon: null,
             title: '3. 결과 · PDF',
-            desc: '진단 이력에서 결과를 확인하고 PDF 보고서를 내려받을 수 있어요.',
+            desc: '스크리닝 이력에서 결과를 확인하고 PDF 보고서를 내려받을 수 있어요.',
             link: '/diagnosis/history',
-            label: '진단 이력 · PDF →',
+            label: '스크리닝 이력 · PDF →',
           },
         ].map((item) => (
           <div

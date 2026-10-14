@@ -230,7 +230,7 @@ export function MyPage() {
                   </span>
                   <span className="flex items-center gap-1">
                     <Activity className="w-3.5 h-3.5" />
-                    진단 {diagnoses.length}회
+                    스크리닝 {diagnoses.length}회
                   </span>
                   <span className="flex items-center gap-1">
                     <MessageCircle className="w-3.5 h-3.5" />
@@ -245,7 +245,7 @@ export function MyPage() {
           <div className="flex gap-1 mb-6 bg-slate-100 p-1 rounded-xl overflow-x-auto">
             {[
               { key: "pets", label: "반려동물", icon: PawPrint },
-              { key: "history", label: "진단 이력", icon: Activity },
+              { key: "history", label: "스크리닝 이력", icon: Activity },
               { key: "opinions", label: "소견", icon: MessageCircle },
               { key: "settings", label: "설정", icon: Settings },
             ].map((tab) => (
@@ -327,7 +327,7 @@ export function MyPage() {
           {activeTab === "history" && (
             <div className="space-y-4">
               <div className="flex justify-between items-center">
-                <h2 className="text-lg font-bold text-slate-900">최근 진단 이력</h2>
+                <h2 className="text-lg font-bold text-slate-900">최근 스크리닝 이력</h2>
                 <Link to="/diagnosis/history" className="text-sm text-blue-600 hover:underline">
                   전체 보기 →
                 </Link>
@@ -335,9 +335,9 @@ export function MyPage() {
               {diagnoses.length === 0 ? (
                 <div className="bg-white border border-slate-200 rounded-xl p-16 text-center shadow-sm">
                   <Activity className="w-12 h-12 mx-auto text-slate-200 mb-4" />
-                  <p className="text-slate-500 mb-4">진단 이력이 없습니다</p>
+                  <p className="text-slate-500 mb-4">스크리닝 이력이 없습니다</p>
                   <Link to="/diagnosis/new" className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">
-                    AI 진단 시작하기
+                    AI 스크리닝 시작하기
                   </Link>
                 </div>
               ) : (

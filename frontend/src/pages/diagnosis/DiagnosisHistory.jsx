@@ -18,7 +18,7 @@ export default function DiagnosisHistory() {
   useEffect(() => {
     getMyDiagnoses()
       .then(setHistories)
-      .catch(() => setError('진단 이력을 불러오는데 실패했습니다.'))
+      .catch(() => setError('스크리닝 이력을 불러오는데 실패했습니다.'))
       .finally(() => setIsLoading(false));
   }, []);
 
@@ -70,11 +70,11 @@ export default function DiagnosisHistory() {
 
   return (
     <main className="mx-auto max-w-2xl px-4 py-10">
-      <h1 className="text-xl font-bold text-slate-900 mb-6">진단 이력</h1>
+      <h1 className="text-xl font-bold text-slate-900 mb-6">스크리닝 이력</h1>
 
       {histories.length === 0 ? (
         <div className="bg-white border border-slate-200 rounded-xl p-16 text-center shadow-sm">
-          <p className="text-slate-500">아직 진단 이력이 없어요.</p>
+          <p className="text-slate-500">아직 스크리닝 이력이 없어요.</p>
         </div>
       ) : (
         <>
@@ -185,7 +185,7 @@ export default function DiagnosisHistory() {
             <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
               <Trash2 className="h-6 w-6 text-red-500" />
             </div>
-            <h3 className="text-lg font-bold text-slate-900 mb-1">진단 이력 삭제</h3>
+            <h3 className="text-lg font-bold text-slate-900 mb-1">스크리닝 이력 삭제</h3>
             <p className="text-sm text-slate-500 mb-5">
               삭제하면 보고서와 함께 복구할 수 없습니다.
             </p>

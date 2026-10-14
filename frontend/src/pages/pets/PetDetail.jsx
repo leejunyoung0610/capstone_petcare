@@ -97,7 +97,7 @@ export default function PetDetail() {
         {/* 버튼 */}
         <div className="flex gap-3">
           <ButtonCore variant="default" className="flex-1" asChild>
-            <Link to={`/diagnosis/new?petId=${pet.id}`}>AI 진단하기</Link>
+            <Link to={`/diagnosis/new?petId=${pet.id}`}>AI 스크리닝하기</Link>
           </ButtonCore>
           <ButtonCore variant="secondary" className="flex-1" asChild>
             <Link to={`/pets/${pet.id}/edit`}>수정</Link>

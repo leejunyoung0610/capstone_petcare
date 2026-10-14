@@ -37,7 +37,7 @@ const useDiagnosisStore = create((set, get) => ({
       return diagnosis;
     } catch (error) {
       set({ 
-        error: error.response?.data?.detail || '진단 결과를 불러오는데 실패했습니다.',
+        error: error.response?.data?.detail || '스크리닝 결과를 불러오는데 실패했습니다.',
         loading: false 
       });
       throw error;
@@ -51,7 +51,7 @@ const useDiagnosisStore = create((set, get) => ({
       set({ diagnoses, loading: false });
     } catch (error) {
       set({ 
-        error: error.response?.data?.detail || '진단 이력을 불러오는데 실패했습니다.',
+        error: error.response?.data?.detail || '스크리닝 이력을 불러오는데 실패했습니다.',
         loading: false 
       });
     }
@@ -65,7 +65,7 @@ const useDiagnosisStore = create((set, get) => ({
       return diagnoses;
     } catch (error) {
       set({ 
-        error: error.response?.data?.detail || '진단 이력을 불러오는데 실패했습니다.',
+        error: error.response?.data?.detail || '스크리닝 이력을 불러오는데 실패했습니다.',
         loading: false 
       });
       throw error;

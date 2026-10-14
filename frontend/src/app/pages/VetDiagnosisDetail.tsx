@@ -103,7 +103,7 @@ export function VetDiagnosisDetail() {
           대시보드로
         </Link>
         <h1 className="mt-2 text-lg font-bold text-slate-900">AI 분석 결과 & 소견 요청 상세</h1>
-        <p className="text-xs text-slate-500">진단 #{diagnosisId}</p>
+        <p className="text-xs text-slate-500">AI 스크리닝 #{diagnosisId}</p>
       </header>
 
       <div className="max-w-5xl mx-auto p-6 space-y-6">

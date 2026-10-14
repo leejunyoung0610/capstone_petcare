@@ -77,7 +77,7 @@ export const downloadDiagnosisPDF = async (diagnosisId) => {
       timeout: 120000,
     });
 
-    savePdfBlob(response.data, `진단보고서_${diagnosisId}.pdf`);
+    savePdfBlob(response.data, `AI스크리닝보고서_${diagnosisId}.pdf`);
   } catch (error) {
     const data = error.response?.data;
     if (data instanceof Blob) {

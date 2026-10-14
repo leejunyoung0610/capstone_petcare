@@ -68,7 +68,7 @@
 | 계층 | 역할 |
 |------|------|
 | **Frontend** | React + Vite PWA, Zustand 상태관리, Kakao OAuth/Map |
-| **Backend** | JWT 인증, 반려동물·진단·소견·알림 API, S3 업로드 |
+| **Backend** | JWT 인증, 반려동물·AI 스크리닝·소견·알림 API, S3 업로드 |
 | **AI Server** | EfficientNet-B3 멀티태스크 추론, GradCAM, PDF 생성 |
 | **Infra** | AWS EC2, Docker Compose, Nginx, HTTPS (`ganadi.site`) |
 
@@ -81,7 +81,7 @@
 - 안구 사진 → **10종 질환 Top-3** 스크리닝 (강아지 10 / 고양이 5)
 - **EfficientNet-B3** 멀티태스크 모델 (질환별 분류 헤드) — 10-class **Softmax 감별 헤드**는 오프라인 실험으로 검증
 - **ONNX 경량화**: FP32 ~38ms (PyTorch ~440ms 대비 약 11×), 배포 기본값 **INT8은 ~18MB · ~56ms** (CPU 기준)
-- **Claude API** 기반 진단 결과 자연어 해석 + **ReportLab PDF** 리포트
+- **Claude API** 기반 AI 스크리닝 결과 자연어 해석 + **ReportLab PDF** 리포트
 - 의료법 준수: "진단"이 아닌 **"AI 스크리닝 소견"** 표현 사용
 
 ### 📱 서비스 기능
@@ -89,7 +89,7 @@
 - 카메라 촬영 → 안구 크롭 → 실시간 AI 분석
 - Kakao Map 기반 주변 동물병원 + **GANADI 인증** 병원 필터
 - **보호자 / 수의사 / 관리자** 3종 포털
-- Kakao OAuth 로그인, **Web Push** 알림, 진단 이력 관리
+- Kakao OAuth 로그인, **Web Push** 알림, 스크리닝 이력 관리
 
 ---
 

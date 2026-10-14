@@ -85,7 +85,7 @@ export function PushSettingsCard() {
             푸시 알림
           </h3>
           <p className="mt-0.5 text-xs text-slate-500 sm:text-sm">
-            소견이 도착하거나 진단 결과가 준비되면 브라우저로 즉시 알려드립니다.
+            소견이 도착하거나 AI 스크리닝 결과가 준비되면 브라우저로 즉시 알려드립니다.
           </p>
 
           {!isUnsupported && (

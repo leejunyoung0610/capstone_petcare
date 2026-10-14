@@ -162,7 +162,7 @@ export default function AppHeader() {
         <div className="animate-slide-down border-t border-slate-200/80 bg-white/95 px-4 py-3 backdrop-blur-md lg:hidden">
           <nav className="flex flex-col gap-1 text-sm">
             <NavLink to="/diagnosis/history" className={navClass} onClick={() => setMobileOpen(false)}>
-              내 진단 이력
+              내 스크리닝 이력
             </NavLink>
             <NavLink to="/opinions" className={navClass} onClick={() => setMobileOpen(false)}>
               내 소견 요청

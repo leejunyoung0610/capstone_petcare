@@ -131,7 +131,7 @@ export default function PetForm() {
         {isEdit ? '반려동물 정보 수정' : '반려동물 등록'}
       </h1>
       <p className="mt-2 max-w-lg text-sm text-slate-500">
-        진단 시 선택할 수 있도록 기본 정보를 정확히 입력해 주세요.
+        AI 스크리닝 시 선택할 수 있도록 기본 정보를 정확히 입력해 주세요.
       </p>
 
       <div className="mt-8 bg-white border border-slate-200 rounded-xl p-6 shadow-sm">

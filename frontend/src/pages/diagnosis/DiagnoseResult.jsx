@@ -83,7 +83,7 @@ export default function DiagnoseResult() {
       <div className="flex min-h-[40vh] items-center justify-center px-4">
         <div className="text-center">
           <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
-          <p className="text-sm text-slate-500">진단 결과를 불러오는 중...</p>
+          <p className="text-sm text-slate-500">스크리닝 결과를 불러오는 중...</p>
         </div>
       </div>
     );
@@ -94,7 +94,7 @@ export default function DiagnoseResult() {
       <div className="flex min-h-[40vh] flex-col items-center justify-center px-4 text-center">
         <div className="mb-4 text-6xl">⚠️</div>
         <h2 className="mb-2 text-2xl font-bold text-slate-900">오류가 발생했습니다</h2>
-        <p className="mb-6 max-w-md text-slate-500">{error || '진단 결과를 찾을 수 없습니다.'}</p>
+        <p className="mb-6 max-w-md text-slate-500">{error || '스크리닝 결과를 찾을 수 없습니다.'}</p>
         <ButtonCore variant="default" asChild>
           <Link to="/pets">반려동물 목록으로 돌아가기</Link>
         </ButtonCore>
@@ -173,7 +173,7 @@ export default function DiagnoseResult() {
               </p>
             </div>
             <div className="text-right">
-              <p className="text-xs text-slate-400">진단 일시</p>
+              <p className="text-xs text-slate-400">스크리닝 일시</p>
               <p className="text-sm font-semibold text-slate-700">
                 {format(addHours(new Date(created_at), 9), 'yyyy-MM-dd HH:mm')}
               </p>
@@ -195,7 +195,7 @@ export default function DiagnoseResult() {
               <h3 className="mb-3 font-bold text-slate-900">원본 이미지</h3>
               <img
                 src={image_url?.startsWith('http') ? image_url : `http://localhost/${image_url}`}
-                alt="진단 이미지"
+                alt="스크리닝 이미지"
                 className="w-full rounded-lg"
               />
             </div>
@@ -363,7 +363,7 @@ function InAppReport({ data, onClose, onDownloadPDF, pdfBusy, pdfError }) {
       <div className="flex items-center justify-between border-b border-blue-100 bg-blue-50 px-5 py-3">
         <div className="flex items-center gap-2">
           <Stethoscope className="h-5 w-5 text-blue-600" />
-          <h3 className="font-bold text-slate-900">AI 진단 보고서</h3>
+          <h3 className="font-bold text-slate-900">AI 스크리닝 보고서</h3>
         </div>
         <button type="button" onClick={onClose} className="rounded-full p-1 hover:bg-blue-100">
           <X className="h-4 w-4 text-slate-500" />

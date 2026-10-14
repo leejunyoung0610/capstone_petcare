@@ -1,6 +1,6 @@
 # PetCare Backend API
 
-반려동물 안구 질환 AI 진단 서비스의 FastAPI 백엔드입니다.
+반려동물 안구 질환 AI 스크리닝 서비스의 FastAPI 백엔드입니다.
 
 ## 기술 스택
 
@@ -98,7 +98,7 @@ backend/
 │   ├── routers/             # API 라우터
 │   │   ├── auth.py          # 인증 (회원가입, 로그인)
 │   │   ├── pets.py          # 반려동물 CRUD
-│   │   ├── diagnosis.py     # AI 진단
+│   │   ├── diagnosis.py     # AI 스크리닝
 │   │   └── dependencies.py  # 의존성 (인증 등)
 │   └── core/
 │       ├── config.py        # 설정 관리
@@ -126,11 +126,11 @@ backend/
 - `PUT /api/pets/{pet_id}` - 반려동물 정보 수정
 - `DELETE /api/pets/{pet_id}` - 반려동물 삭제
 
-### 진단 (Diagnosis)
+### AI 스크리닝 (Diagnosis)
 
 - `POST /api/diagnosis/analyze` - 안구 이미지 AI 분석
-- `GET /api/diagnosis/history/{pet_id}` - 진단 이력 조회
-- `GET /api/diagnosis/{diagnosis_id}` - 진단 결과 상세 조회
+- `GET /api/diagnosis/history/{pet_id}` - 스크리닝 이력 조회
+- `GET /api/diagnosis/{diagnosis_id}` - 스크리닝 결과 상세 조회
 
 ## 데이터베이스 모델
 
@@ -155,7 +155,7 @@ id, owner_id (FK), name, species (dog/cat), breed, age, gender, profile_image_ur
 created_at, updated_at
 ```
 
-### DiagnosisResult (진단 결과)
+### DiagnosisResult (AI 스크리닝 결과)
 
 ```python
 id, pet_id (FK), image_url, animal_type (dog/cat)
@@ -197,7 +197,7 @@ alembic upgrade head
 ## TODO
 
 - [ ] S3 이미지 업로드 구현
-- [ ] 진단 결과 PDF 리포트 생성
+- [ ] 스크리닝 결과 PDF 리포트 생성
 - [ ] 카카오 소셜 로그인
 - [ ] 수의사 인증 시스템
 - [ ] 웹소켓 실시간 알림

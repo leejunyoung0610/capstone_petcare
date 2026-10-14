@@ -134,7 +134,7 @@ export default function Landing() {
                 shadow: "shadow-violet-500/25",
                 icon: <BarChart3 className="size-7" />,
                 title: "반려동물별 기록",
-                desc: "여러 마리를 등록하고, 진단 이력을 계정에 남겨 두었을 때 변화 추이를 가족이 함께 확인할 수 있습니다.",
+                desc: "여러 마리를 등록하고, 스크리닝 이력을 계정에 남겨 두었을 때 변화 추이를 가족이 함께 확인할 수 있습니다.",
               },
             ].map((item) => (
               <div key={item.title} className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">

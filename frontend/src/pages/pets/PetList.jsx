@@ -120,7 +120,7 @@ export default function PetList() {
                       className="inline-flex w-full justify-center"
                       onClick={(e) => e.stopPropagation()}
                     >
-                      진단하기
+                      AI 스크리닝
                     </Link>
                   </ButtonCore>
                 </div>
