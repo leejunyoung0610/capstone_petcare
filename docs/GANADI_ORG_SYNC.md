@@ -41,7 +41,7 @@ git push ganadi-backend _sync/ganadi-backend:main --force
 
 `api/`와 `models/` 두 트리를 한 레포에 넣어야 하므로, 조직 레포를 **임시 클론**한 뒤 rsync로 맞추는 방식이 안전합니다.
 
-모노레포의 `api/` 안에 중복으로 들어 있는 **`api/api/`, `api/models/`** 는 GANADI-AI 구조와 맞지 않으므로 **복사 후 삭제**합니다.
+과거 모노레포의 `api/` 안에 중복으로 들어 있던 **`api/api/`, `api/models/`** 는 GANADI-AI 구조와 맞지 않아 모노레포에서도 제거했습니다. 조직 레포에 남아 있을 수 있으므로 아래처럼 **복사 후 삭제**합니다.
 
 ```bash
 WORKDIR=/path/to/capstone_petcare/temp_repos/ganadi-ai-sync
