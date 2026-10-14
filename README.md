@@ -79,7 +79,7 @@
 ### 🤖 AI 스크리닝
 
 - 안구 사진 → **10종 질환 Top-3** 스크리닝 (강아지 10 / 고양이 5)
-- **EfficientNet-B3** 멀티태스크 모델 (질환별 분류 헤드) — 10-class **Softmax 감별 헤드**는 오프라인 실험으로 검증
+- **EfficientNet-B3** 멀티태스크 모델 (질환별 분류 헤드) — 10-class **Softmax 감별 헤드**는 오프라인 실험 단계 (배포 추론 코드 미적용)
 - **ONNX 경량화**: FP32 ~38ms (PyTorch ~440ms 대비 약 11×), 배포 기본값 **INT8은 ~18MB · ~56ms** (CPU 기준)
 - **Claude API** 기반 AI 스크리닝 결과 자연어 해석 + **ReportLab PDF** 리포트
 - 의료법 준수: "진단"이 아닌 **"AI 스크리닝 소견"** 표현 사용
@@ -112,7 +112,7 @@
 - 같은 검증 세트를 체크포인트 선택(best val loss)에도 사용했고 **별도 hold-out 테스트 세트가 없어** 일반화 성능보다 낙관적일 수 있습니다.
 - **정상 눈에 대한 오탐률(false-positive rate)은 측정·보고하지 않았습니다.**
 - 결과 파일(JSON/CSV)은 저장소에 포함되어 있지 않습니다. 평가 스크립트: [`models/classifier/eval_multitask_softmax.py`](models/classifier/eval_multitask_softmax.py) (AI Hub 원본 데이터 필요).
-- **보고 지표는 오프라인 평가 기준입니다.** 현재 배포 추론 코드([`api/inference_onnx.py`](api/inference_onnx.py))는 `*_best_random_split(_int8).onnx`(질환별 헤드 `head_*` 출력만 포함)를 로드하며, Softmax 감별 헤드 모델이 배포에 적용됐다는 근거는 이 저장소에 없습니다.
+- **보고 지표는 오프라인 평가 기준입니다.** 현재 배포 추론 코드는 ONNX([`api/inference_onnx.py`](api/inference_onnx.py))·PyTorch 경로 모두 질환별 헤드(`head_*`)만 가진 `*_best_random_split` 모델을 로드하며, Softmax 감별 헤드는 사용하지 않습니다.
 
 ### 배포 모델 경량화 — ONNX (강아지 모델, CPU 추론)
 
