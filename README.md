@@ -195,12 +195,22 @@ cd frontend && npm install && npm run dev
 
 ### 프로덕션 (Docker Compose)
 
+`backend/docker-compose.prod.yml` 은 **오버라이드 파일**이라 단독으로 실행할 수 없고, 항상 `docker-compose.yml` 과 함께 지정합니다. 프론트 이미지는 이 저장소의 `frontend/` 를 빌드합니다.
+
 ```bash
 cd backend
-docker compose -f docker-compose.prod.yml up -d
+cp .env.production.example .env   # SECRET_KEY, RDS_ENDPOINT, DB_PASSWORD, VITE_KAKAO_MAP_KEY, AI_INTERNAL_TOKEN 등
+cp api/.env.example api/.env      # ANTHROPIC_API_KEY, INFERENCE_BACKEND=onnx_int8
+# 모델 파일(Git 미포함)을 backend/models/classifier/checkpoints/ 에 배치
+#   예: dog_best_random_split_int8.onnx, cat_best_random_split_int8.onnx
+# SSL 인증서: /etc/ssl/ganadi/ganadi.pem, ganadi.key
+
+./scripts/deploy-prod.sh          # 환경 검사 → 빌드·기동 → 헬스체크·스모크 테스트
+# 수동 실행 시:
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 ```
 
-배포 상세: [`backend/docs/DEPLOYMENT.md`](backend/docs/DEPLOYMENT.md)
+배포 상세: [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)
 
 ---
 

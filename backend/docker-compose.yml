@@ -70,7 +70,9 @@ services:
   # ── 프론트엔드 ────────────────────────────────────────────────────────────
   frontend:
     build:
-      context: ../GANADI-frontend
+      # 모노레포: backend/ 기준 ../frontend. 조직 레포를 다른 이름으로 clone 했다면
+      # FRONTEND_CONTEXT=../GANADI-frontend 처럼 지정.
+      context: ${FRONTEND_CONTEXT:-../frontend}
       dockerfile: Dockerfile
       args:
         VITE_API_URL: ${VITE_API_URL:-}

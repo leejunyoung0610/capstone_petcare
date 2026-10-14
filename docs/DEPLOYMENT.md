@@ -11,7 +11,9 @@
 - Docker + Docker Compose v2
 - SSL 인증서: `/etc/ssl/ganadi/ganadi.pem`, `ganadi.key`
 - RDS MySQL 8.0 (`ganadi_local` DB, `ganadi_user` 계정)
-- AI 체크포인트: `backend/models/classifier/checkpoints/*.pth` (호스트 마운트)
+- AI 모델 파일 (Git 미포함): `backend/models/classifier/checkpoints/` 에 배치 → `ai` 컨테이너에 읽기 전용 마운트
+  - 기본 `INFERENCE_BACKEND=onnx_int8` → `{dog,cat}_best_random_split_int8.onnx` (`onnx` 는 FP32 `.onnx`, `pytorch` 는 `.pth`)
+  - 생성 방법: [`models/classifier/checkpoints/README.md`](../models/classifier/checkpoints/README.md)
 
 ### 외부 콘솔
 | 서비스 | 설정 |
@@ -27,6 +29,7 @@
 ```bash
 cd backend
 cp .env.production.example .env
+cp api/.env.example api/.env   # AI 서버: ANTHROPIC_API_KEY, INFERENCE_BACKEND
 # SECRET_KEY: openssl rand -hex 32
 # RDS, Kakao, SMTP, Toss, VAPID 등 채우기
 # AI_INTERNAL_TOKEN: openssl rand -hex 32 (backend·ai 컨테이너 공용)
@@ -62,11 +65,13 @@ cd backend
 ./scripts/deploy-prod.sh
 ```
 
-수동 실행:
+수동 실행 (`docker-compose.prod.yml` 은 오버라이드라 단독 실행 불가 — 반드시 두 파일을 함께 지정):
 
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 ```
+
+프론트 빌드 context 는 기본 `../frontend`(모노레포의 `frontend/`)입니다. 조직 레포를 형제 폴더로 따로 clone 했다면 `FRONTEND_CONTEXT=../GANADI-frontend` 처럼 지정합니다.
 
 백엔드 컨테이너는 시작 시 `alembic upgrade head` 후 uvicorn을 띄웁니다.
 
@@ -117,7 +122,7 @@ cp .env.example .env   # ENVIRONMENT=development
 docker compose up -d --build
 ```
 
-MySQL은 compose 내 컨테이너, 프론트 context는 `../frontend`.
+MySQL은 compose 내 컨테이너, 프론트 context는 `../frontend` (`FRONTEND_CONTEXT` 로 변경 가능).
 
 ---
 

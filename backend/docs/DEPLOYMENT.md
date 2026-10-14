@@ -3,7 +3,7 @@
 실제 서비스(`https://ganadi.site`) 배포 절차입니다.  
 체크리스트: [LAUNCH_READINESS.md](./LAUNCH_READINESS.md)
 
-> **레포 구조:** 이 저장소는 백엔드 루트입니다. Docker 빌드 시 프론트는 **형제 폴더** `../frontend` (GANADI-frontend clone)가 필요합니다.
+> **레포 구조:** 이 저장소는 백엔드 루트입니다. Docker 빌드 시 프론트는 **형제 폴더** `../frontend` (GANADI-frontend clone)가 필요합니다. 다른 이름으로 clone 했다면 `FRONTEND_CONTEXT=../GANADI-frontend` 처럼 지정하세요.
 
 ---
 
@@ -59,7 +59,7 @@ chmod +x scripts/*.sh
 ./scripts/deploy-prod.sh
 ```
 
-또는:
+또는 (`docker-compose.prod.yml` 은 오버라이드라 단독 실행 불가):
 
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build

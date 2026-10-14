@@ -1,4 +1,5 @@
 # 프로덕션 오버라이드 — 로컬 MySQL 제거, RDS 사용
+# 단독 실행 불가: 반드시 docker-compose.yml 과 함께 지정 (backend/ 에서 실행)
 # 사용법: ./scripts/deploy-prod.sh  또는
 #   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 
@@ -28,7 +29,7 @@ services:
 
   frontend:
     build:
-      context: ../GANADI-frontend
+      context: ${FRONTEND_CONTEXT:-../frontend}
       dockerfile: Dockerfile
       args:
         VITE_API_URL: ${VITE_API_URL:-}
