@@ -3,6 +3,13 @@
 AI 서버(`api/main.py`)가 로드하는 모델 파일을 이 디렉터리에 둡니다.  
 **Git에는 포함하지 않습니다** (용량 큼). Docker는 볼륨 마운트로 사용합니다.
 
+## 가중치 출처
+
+- **배포 모델 파일은 Git에 없습니다.** `train_random_split.py` 로 학습한 `{dog,cat}_best_random_split.pth` 를 아래 [생성 방법](#생성-방법-학습-서버--로컬)대로 ONNX(FP32 / INT8)로 변환해, 서버의 `backend/models/classifier/checkpoints/` 에 직접 복사합니다.
+- Docker Compose 는 `backend/models/classifier/checkpoints/` 를 `ai` 컨테이너의 `/app/models/classifier/checkpoints` 로 **읽기 전용 마운트**합니다 (이미지에는 포함하지 않음 — `backend/Dockerfile.ai.dockerignore`). 기본 `INFERENCE_BACKEND=onnx_int8` 이므로 `*_best_random_split_int8.onnx` 가 필요합니다.
+- 로컬에서 루트 기준 `uvicorn api.main:app` 으로 실행하면 루트 `models/classifier/checkpoints/` 를 읽습니다 (`MODEL_CHECKPOINT_DIR`).
+- 이 디렉터리에 커밋된 `dog_best.pth`, `cat_best.pth`, `*_final.pth`, `dog_simplified_best.pth` 는 2026-04 레거시 모델의 **Git LFS 포인터 파일**(약 130바이트)입니다. `git lfs pull` 없이는 가중치가 아니며, `MODEL_VERSION=legacy` 와 레거시 평가 스크립트에서만 참조됩니다 — 현재 배포 모델(`random_split`)과 무관합니다.
+
 ## PyTorch (기본: `INFERENCE_BACKEND=pytorch`)
 
 | 파일 | 동물 | 크기 | CPU 속도 | 정확도 |
