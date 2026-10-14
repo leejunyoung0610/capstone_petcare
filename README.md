@@ -79,8 +79,8 @@
 ### 🤖 AI 스크리닝
 
 - 안구 사진 → **10종 질환 Top-3** 스크리닝 (강아지 10 / 고양이 5)
-- **EfficientNet-B3** 멀티태스크 모델 + **10-class Softmax 감별 헤드**
-- **ONNX INT8** 추론 ~38ms (PyTorch 대비 **11.6×** 가속, EC2 CPU 기준)
+- **EfficientNet-B3** 멀티태스크 모델 (질환별 분류 헤드) — 10-class **Softmax 감별 헤드**는 오프라인 실험으로 검증
+- **ONNX 경량화**: FP32 ~38ms (PyTorch ~440ms 대비 약 11×), 배포 기본값 **INT8은 ~18MB · ~56ms** (CPU 기준)
 - **Claude API** 기반 진단 결과 자연어 해석 + **ReportLab PDF** 리포트
 - 의료법 준수: "진단"이 아닌 **"AI 스크리닝 소견"** 표현 사용
 
@@ -95,17 +95,35 @@
 
 ## 🔬 AI 성과
 
-> 강아지 Validation (random split, 비정상 샘플 기준). Softmax 감별 헤드 도입 전·후 비교.
+### 질환 감별 — Softmax 감별 헤드 도입 전·후 (오프라인 평가)
+
+> 강아지 모델, TL random split **검증(Validation) 세트**. Softmax 감별 헤드 도입 전·후 비교.
 
 | 지표 | 개선 전 | 개선 후 |
 |------|---------|---------|
-| **Top-1 정확도** | 27.25% | **53.77%** (≈2×) |
-| **Top-3 정확도** | 51.65% | **84.35%** (+32.7%p) |
-| **Device 의존성** | 9.08%p | **2.72%p** |
-| **추론 시간 (CPU)** | 443ms | **38ms** (11.6×) |
-| **모델 크기** | 214MB | **18MB** (INT8) |
+| **Top-1 정확도** (비정상 샘플) | 27.25% | **53.77%** (≈2×) |
+| **Top-3 정확도** (비정상 샘플) | 51.65% | **84.35%** (+32.7%p) |
+| **Device 의존성** (촬영장비별 정확도 최대−최소) | 9.08%p | **2.72%p** |
 
-추가 검증·벤치마크: [`models/classifier/checkpoints/README.md`](models/classifier/checkpoints/README.md)
+**이 수치가 측정하는 것과 한계**
+
+- Top-1/Top-3: 검증 세트의 **비정상(질환) 이미지만** 대상으로, 10종 질환 중 정답 질환이 예측 1위 / 3위 안에 든 비율입니다. 정상 눈 이미지는 계산에 포함되지 않습니다.
+- Device 의존성: 검증 세트를 촬영장비(스마트폰·검안경 등)별로 나눠 질환 헤드 정확도를 구했을 때 장비 간 최대−최소 차이입니다 (`train_random_split.evaluate_device_subsets` 정의).
+- 같은 검증 세트를 체크포인트 선택(best val loss)에도 사용했고 **별도 hold-out 테스트 세트가 없어** 일반화 성능보다 낙관적일 수 있습니다.
+- **정상 눈에 대한 오탐률(false-positive rate)은 측정·보고하지 않았습니다.**
+- 결과 파일(JSON/CSV)은 저장소에 포함되어 있지 않습니다. 평가 스크립트: [`models/classifier/eval_multitask_softmax.py`](models/classifier/eval_multitask_softmax.py) (AI Hub 원본 데이터 필요).
+- **보고 지표는 오프라인 평가 기준입니다.** 현재 배포 추론 코드([`api/inference_onnx.py`](api/inference_onnx.py))는 `*_best_random_split(_int8).onnx`(질환별 헤드 `head_*` 출력만 포함)를 로드하며, Softmax 감별 헤드 모델이 배포에 적용됐다는 근거는 이 저장소에 없습니다.
+
+### 배포 모델 경량화 — ONNX (강아지 모델, CPU 추론)
+
+| 형식 | 모델 크기 | 추론 시간 (CPU) |
+|------|-----------|-----------------|
+| PyTorch `.pth` | ~214MB | ~440ms |
+| ONNX FP32 | ~71MB | **~38ms** (약 11×) |
+| ONNX INT8 (Dynamic, **배포 기본값**) | **~18MB** | ~56ms (약 8×) |
+
+- INT8은 FP32 대비 일부 경계 샘플에서 Top-1 순위가 달라질 수 있습니다.
+- 파일별 상세·생성 방법: [`models/classifier/checkpoints/README.md`](models/classifier/checkpoints/README.md)
 
 ---
 
