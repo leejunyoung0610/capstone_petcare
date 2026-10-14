@@ -190,7 +190,7 @@ capstone_petcare/
 
 | 문서 | 내용 |
 |------|------|
-| [PROJECT_DOCUMENTATION.md](PROJECT_DOCUMENTATION.md) | 전체 기능·API·모델 상세 |
+| [docs/PROJECT_DOCUMENTATION.md](docs/PROJECT_DOCUMENTATION.md) | 전체 기능·API·모델 상세 |
 | [docs/GANADI_LOCAL_RUN.md](docs/GANADI_LOCAL_RUN.md) | 로컬 3-tier 실행 |
 | [models/classifier/checkpoints/README.md](models/classifier/checkpoints/README.md) | 모델 파일·ONNX 벤치마크 |
 
