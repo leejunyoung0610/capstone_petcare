@@ -128,7 +128,7 @@ cloudflared tunnel --url http://localhost:5173
 
 ## 3. 카카오 Developers 콘솔 — 필수 추가 작업
 
-> 팀 공통 앱 키 (`b715c846bf27f856fd510acbd5a39ef3`) 를 모두 사용 중이므로,
+> 팀 공통 앱 키 (`<KAKAO_JAVASCRIPT_KEY>` — 실제 값은 `.env` 의 `VITE_KAKAO_MAP_KEY`, 문서에 기재 금지) 를 모두 사용 중이므로,
 > **앱 소유 팀원이 한 번만 등록하면 모든 팀원에게 즉시 적용** 됩니다.
 
 카카오 Developers → 내 애플리케이션 → 가나디 앱 으로 들어가 아래 3 군데 모두 추가:
