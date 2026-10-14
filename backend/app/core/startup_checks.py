@@ -58,6 +58,12 @@ def validate_production_settings(*, strict: bool = True) -> list[str]:
     if not settings.VAPID_PUBLIC_KEY or not settings.VAPID_PRIVATE_KEY:
         warnings.append("VAPID 키 미설정 — 컨테이너 재시작마다 푸시 구독이 무효화될 수 있습니다.")
 
+    if not (settings.AI_INTERNAL_TOKEN or "").strip():
+        warnings.append(
+            "AI_INTERNAL_TOKEN 미설정 — AI 서버가 내부 호출 토큰 없이 요청을 받습니다 "
+            "(외부 미노출 전제, 설정 권장)."
+        )
+
     cors = settings.cors_origins_list
     if any("localhost" in o or "127.0.0.1" in o for o in cors):
         warnings.append("CORS_ORIGINS 에 localhost 가 포함되어 있습니다.")

@@ -40,6 +40,8 @@ cp .env.production.example .env
 
 필수: `RDS_ENDPOINT`, `DB_PASSWORD`, `VITE_KAKAO_MAP_KEY`, Kakao, SMTP — `.env.production.example` 참고.
 
+권장: `AI_INTERNAL_TOKEN` (`openssl rand -hex 32`) — compose 가 ai 컨테이너에도 주입하며, AI 서버는 이 헤더가 없는 `/api/ai/*` 요청을 거부합니다. AI 서버는 nginx 로 외부에 노출하지 않습니다.
+
 ---
 
 ## 3. 배포 전 검사

@@ -6,7 +6,7 @@ FastAPI AI 서버 - 반려동물 안구 질환 분석
 """
 from __future__ import annotations
 
-from fastapi import FastAPI, File, UploadFile, HTTPException, Form, Body
+from fastapi import FastAPI, File, UploadFile, HTTPException, Form, Body, Depends, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
@@ -14,6 +14,7 @@ from typing import Dict, Optional, Union, List
 import torch
 import numpy as np
 from PIL import Image
+import hmac
 import io
 import json
 import logging
@@ -69,13 +70,42 @@ app = FastAPI(
 )
 
 # CORS 설정
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# AI 서버는 Docker Compose 내부망에서 백엔드만 호출하므로(서버 간 통신) 기본값은
+# 브라우저 origin 을 하나도 허용하지 않는다. 로컬에서 브라우저로 직접 호출해야 할 때만
+# AI_CORS_ORIGINS=http://localhost:5173 처럼 명시적 origin 을 콤마로 지정한다.
+# 와일드카드('*')는 무시하며, 쿠키·인증정보(credentials)는 허용하지 않는다.
+def _parse_cors_origins(raw: str) -> List[str]:
+    origins = [o.strip() for o in raw.split(",") if o.strip()]
+    if "*" in origins:
+        logger.warning("AI_CORS_ORIGINS 의 '*' 는 무시합니다 — 명시적 origin 만 허용됩니다.")
+    return [o for o in origins if o != "*"]
+
+
+AI_CORS_ORIGINS = _parse_cors_origins(os.getenv("AI_CORS_ORIGINS", ""))
+if AI_CORS_ORIGINS:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=AI_CORS_ORIGINS,
+        allow_credentials=False,
+        allow_methods=["GET", "POST"],
+        allow_headers=["Content-Type", "X-Internal-Token"],
+    )
+
+
+# 내부 호출 토큰 (선택)
+# AI_INTERNAL_TOKEN 이 설정되면 /api/ai/* 요청은 X-Internal-Token 헤더가 일치해야 한다.
+# 백엔드는 같은 값을 settings.AI_INTERNAL_TOKEN 으로 읽어 헤더에 실어 보낸다.
+# 비어 있으면 검사를 건너뛴다(로컬 개발 호환). /health 는 컨테이너 헬스체크용으로 항상 공개.
+def verify_internal_token(
+    x_internal_token: Optional[str] = Header(default=None, alias="X-Internal-Token"),
+) -> None:
+    expected = os.getenv("AI_INTERNAL_TOKEN", "").strip()
+    if not expected:
+        return
+    if not x_internal_token or not hmac.compare_digest(
+        x_internal_token.encode("utf-8"), expected.encode("utf-8")
+    ):
+        raise HTTPException(status_code=401, detail="내부 호출 토큰이 올바르지 않습니다.")
 
 # 전역 변수: 모델 캐시 {animal_type: {"model", "path", "meta"}}
 models_cache: Dict[str, dict] = {}
@@ -699,7 +729,12 @@ async def health_check():
     )
 
 
-@app.post("/api/ai/analyze", response_model=PredictionResponse, tags=["AI"])
+@app.post(
+    "/api/ai/analyze",
+    response_model=PredictionResponse,
+    tags=["AI"],
+    dependencies=[Depends(verify_internal_token)],
+)
 async def analyze(
     file: UploadFile = File(...),
     animal_type: str = Form(...),
@@ -756,7 +791,12 @@ async def analyze(
         raise HTTPException(status_code=500, detail=f"분석 실패: {str(e)}")
 
 
-@app.post("/api/ai/report", response_model=ReportResponse, tags=["AI"])
+@app.post(
+    "/api/ai/report",
+    response_model=ReportResponse,
+    tags=["AI"],
+    dependencies=[Depends(verify_internal_token)],
+)
 async def generate_report(request: ReportRequest):
     """
     AI 스크리닝 결과 리포트 생성
@@ -906,7 +946,7 @@ JSON만 출력하고 다른 설명은 불필요합니다."""
         )
 
 
-@app.post("/api/ai/pdf", tags=["AI"])
+@app.post("/api/ai/pdf", tags=["AI"], dependencies=[Depends(verify_internal_token)])
 async def generate_pdf_report(request: PDFRequest):
     """
     AI 스크리닝 결과 PDF 생성

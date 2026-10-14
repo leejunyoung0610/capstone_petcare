@@ -29,6 +29,7 @@ cd backend
 cp .env.production.example .env
 # SECRET_KEY: openssl rand -hex 32
 # RDS, Kakao, SMTP, Toss, VAPID 등 채우기
+# AI_INTERNAL_TOKEN: openssl rand -hex 32 (backend·ai 컨테이너 공용)
 ```
 
 프론트 빌드 변수는 `backend/.env`에 함께 두거나 CI secret으로 주입:
@@ -89,6 +90,9 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 | Rate limit | 로그인 20/min, 비밀번호 찾기 5/5min |
 | CSP | Kakao + Toss 도메인 허용 (`nginx.prod.conf`) |
 | Health | `/api/health` — DB·SMTP·토스·VAPID 상태 |
+| AI 서버 | 외부 미노출 — nginx `/ai/` 프록시·호스트 포트 없음, 백엔드만 compose 내부망(`http://ai:8000`)으로 호출 |
+| AI 내부 토큰 | `AI_INTERNAL_TOKEN`(선택, `backend/.env`) 설정 시 `/api/ai/*` 는 `X-Internal-Token` 헤더 필수 |
+| AI CORS | 기본 브라우저 origin 미허용(`AI_CORS_ORIGINS` 로만 명시적 허용, `*`·credentials 불가) |
 
 ---
 

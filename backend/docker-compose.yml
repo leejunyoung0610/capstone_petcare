@@ -49,6 +49,11 @@ services:
       context: .
       dockerfile: Dockerfile.ai
     env_file: api/.env
+    environment:
+      # 선택: backend/.env 에 AI_INTERNAL_TOKEN 을 두면 compose 가 이 값을 ai 에도 주입하고,
+      # backend 는 같은 값을 env_file(.env)로 읽어 X-Internal-Token 헤더로 보낸다.
+      AI_INTERNAL_TOKEN: ${AI_INTERNAL_TOKEN:-}
+    # ports 없음 — AI 서버는 ganadi-net 내부에서 backend 만 호출 (외부·nginx 미노출)
     volumes:
       # .pth 파일은 이미지에 포함하지 않고 호스트 경로를 마운트
       - ./models/classifier/checkpoints:/app/models/classifier/checkpoints:ro
@@ -70,7 +75,6 @@ services:
       args:
         VITE_API_URL: ${VITE_API_URL:-}
         VITE_KAKAO_MAP_KEY: ${VITE_KAKAO_MAP_KEY:-}
-        VITE_AI_SERVER_URL: ${VITE_AI_SERVER_URL:-}
     networks:
       - ganadi-net
     restart: unless-stopped

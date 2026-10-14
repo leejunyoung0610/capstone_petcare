@@ -30,6 +30,9 @@ class Settings(BaseSettings):
     
     # AI Server
     AI_SERVER_URL: str = "http://localhost:8000"
+    # AI 서버 내부 호출 토큰 (선택) — AI 서버의 AI_INTERNAL_TOKEN 과 같은 값.
+    # 설정하면 /api/ai/* 호출 시 X-Internal-Token 헤더로 전송. 비우면 헤더 없이 호출.
+    AI_INTERNAL_TOKEN: str = ""
 
     # 학습 데이터 수집 (Phase 1) — false면 수집 로직·검증 전부 비활성 (기본)
     COLLECTION_ENABLED: bool = False
@@ -125,6 +128,12 @@ class Settings(BaseSettings):
     def cors_origins_list(self) -> List[str]:
         """CORS origins를 리스트로 변환"""
         return [origin.strip() for origin in self.CORS_ORIGINS.split(",")]
+
+    @property
+    def ai_request_headers(self) -> dict:
+        """AI 서버 호출 공통 헤더 (내부 토큰이 설정된 경우에만 포함)."""
+        token = (self.AI_INTERNAL_TOKEN or "").strip()
+        return {"X-Internal-Token": token} if token else {}
 
     @property
     def toss_payments_configured(self) -> bool:

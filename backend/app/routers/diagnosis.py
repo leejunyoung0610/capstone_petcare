@@ -102,7 +102,8 @@ async def analyze_pet_eye(
             response = await client.post(
                 f"{settings.AI_SERVER_URL}/api/ai/analyze",
                 files=files,
-                data=data
+                data=data,
+                headers=settings.ai_request_headers,
             )
             response.raise_for_status()
             ai_result = response.json()
@@ -238,6 +239,7 @@ async def download_diagnosis_pdf(
             report_resp = await client.post(
                 f"{settings.AI_SERVER_URL}/api/ai/report",
                 json=report_body,
+                headers=settings.ai_request_headers,
             )
             if report_resp.status_code >= 400:
                 detail = report_resp.text
@@ -271,6 +273,7 @@ async def download_diagnosis_pdf(
             pdf_resp = await client.post(
                 f"{settings.AI_SERVER_URL}/api/ai/pdf",
                 json=pdf_body,
+                headers=settings.ai_request_headers,
             )
             if pdf_resp.status_code >= 400:
                 detail = pdf_resp.text
@@ -367,6 +370,7 @@ async def get_diagnosis_report(
             resp = await client.post(
                 f"{settings.AI_SERVER_URL}/api/ai/report",
                 json=report_body,
+                headers=settings.ai_request_headers,
             )
             if resp.status_code >= 400:
                 detail = resp.text
